@@ -12,6 +12,13 @@
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
     #canvas-container { position: absolute; inset: 0; z-index: 1; }
     
+    /* شاشة التحميل */
+    #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+    .spinner { width: 60px; height: 60px; border: 4px solid rgba(255, 215, 0, 0.1); border-top-color: #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .loading-text { color: #FFD700; letter-spacing: 2px; font-weight: bold; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
     /* واجهة المستخدم */
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
@@ -49,6 +56,11 @@
 </head>
 <body>
 
+<div id="loader">
+    <div class="spinner"></div>
+    <div class="loading-text">جاري مسح المجرة...</div>
+</div>
+
 <div id="canvas-container"></div>
 
 <div id="ui-layer">
@@ -84,7 +96,7 @@
 
 <script>
 // ================================================================
-//   الإعدادات
+//   الإعدادات والتحقق
 // ================================================================
 const API_BASE = 'https://jkl-ttvi.onrender.com';
 const ADMIN_ID = "7011476249";
@@ -105,9 +117,11 @@ if (isAdmin) {
 let isPlaying = false;
 let planetsMeshes = [];
 let particles = [];
+let loadedTextures = 0;
+let totalTextures = 0;
 
 // ================================================================
-//   🎵 المؤثرات الصوتية
+//   الأصوات
 // ================================================================
 const soundAmbient = new Howl({ src: ['https://actions.google.com/sounds/v1/ambiences/deep_space_ambience.ogg'], loop: true, volume: 0.3 });
 const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/explosions/deep_explosion.ogg'], volume: 0.9 });
@@ -127,14 +141,12 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// إضاءة قوية جداً لضمان ظهور الصورة كاملة على الكوكب
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // إضاءة محيطة عالية جداً
+// إضاءة قوية جداً
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
-
 const dirLight1 = new THREE.DirectionalLight(0xffffff, 1);
 dirLight1.position.set(1, 1, 1);
 scene.add(dirLight1);
-
 const dirLight2 = new THREE.DirectionalLight(0xffffff, 1);
 dirLight2.position.set(-1, -1, -1);
 scene.add(dirLight2);
@@ -148,28 +160,40 @@ const starField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ colo
 scene.add(starField);
 
 // ================================================================
-//   إنشاء الكوكب (تعديل التغطية 360 درجة)
+//   إنشاء الكوكب (تغطية كاملة 360 درجة)
 // ================================================================
 function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
     const size = 5; 
-    // زيادة عدد المقاطع لضمان سلاسة الكرة
+    // دقة عالية جداً
     const geometry = new THREE.SphereGeometry(size, 128, 128); 
     
     let material;
     if (textureUrl) {
         const loader = new THREE.TextureLoader();
-        const texture = loader.load(textureUrl);
+        // إضافة رد نداء عند تحميل الصورة لضمان التغطية
+        loader.load(textureUrl, (texture) => {
+            // ✅ إعدادات الالتفاف الإجباري (Equirectangular)
+            texture.wrapS = THREE.RepeatWrapping; 
+            texture.wrapT = THREE.RepeatWrapping; 
+            texture.repeat.set(1, 1); 
+            texture.offset.set(0, 0); 
+            texture.center.set(0.5, 0.5); 
+            
+            material.map = texture;
+            material.needsUpdate = true;
+            
+            // تحديث شاشة التحميل
+            loadedTextures++;
+            if (loadedTextures >= totalTextures) {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            }
+        });
         
-        // ✅ التعديل الجذري هنا: إعدادات الالتفاف لتغطية 100%
-        texture.wrapS = THREE.RepeatWrapping; 
-        texture.wrapT = THREE.RepeatWrapping; 
-        texture.repeat.set(1, 1); // عدم تكرار الصورة
-        texture.offset.set(0, 0); // محاذاة الصورة من المنتصف
-        texture.center.set(0.5, 0.5); // تمركز الالتفاف
-
+        // إنشاء المادة بلون مبدئي ثم استبدالها بالصورة
         material = new THREE.MeshStandardMaterial({ 
-            map: texture, 
-            roughness: 0.9, // تقليل اللمعان لإظهار تفاصيل الصورة
+            color: color,
+            roughness: 0.9, 
             metalness: 0.1 
         });
     } else {
@@ -208,14 +232,10 @@ function animate() {
     planetsMeshes.forEach(mesh => {
         if (!mesh.visible) return;
         const d = mesh.userData;
-        
-        // حركة مدارية
         d.angle += d.speed;
         mesh.position.x = Math.cos(d.angle) * d.orbitRadius;
         mesh.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 20;
         mesh.position.y = Math.sin(d.angle) * d.orbitRadius * 0.3;
-        
-        // دوران ذاتي بطيء (يجعل الصورة تدور حول الكوكب بالكامل)
         mesh.rotation.y += 0.003;
     });
 
@@ -232,19 +252,15 @@ function animate() {
 }
 animate();
 
-// ================================================================
-//   التفاعل
-// ================================================================
+// التفاعل
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 window.addEventListener('pointerdown', (event) => {
     if (!isPlaying) return;
-    
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    
     const intersects = raycaster.intersectObjects(planetsMeshes);
     if (intersects.length > 0) handlePlanetClick(intersects[0].object);
 });
@@ -281,21 +297,17 @@ function handlePlanetClick(planet) {
     });
 }
 
-// ================================================================
-//   بدء اللعبة
-// ================================================================
+// بدء اللعبة
 document.getElementById('play-btn').onclick = async () => {
     soundClick.play();
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
-    
     const res = await fetch(`${API_BASE}/api/planet/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: USER_ID })
     });
     const data = await res.json();
-    
     if (data.success) {
         isPlaying = true;
         soundAmbient.play();
@@ -314,14 +326,31 @@ async function init() {
         const data = await res.json();
         
         if (data.success) {
+            totalTextures = data.prizes.length; // عدد الصور التي يجب تحميلها
+            
+            // روابط كواكب حقيقية بنسبة 2:1 (Equirectangular) لتغطية الكوكب 100%
+            const planetTextures = [
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter_2k.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn_2k.jpg'
+            ];
+
             data.prizes.forEach((p, index) => {
                 const orbitRadius = 12 + (index * 6); 
-                createPlanet(p.texture_url, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
+                // استخدام صورة الكوكب المخصصة، أو الصورة الافتراضية
+                const textureUrl = p.texture_url || planetTextures[index % planetTextures.length];
+                createPlanet(textureUrl, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
             });
             
+            // إذا لم تكن هناك صور، نخفي التحميل
+            if (totalTextures === 0) {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            }
+
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
-            
             if (statusData.can_play) {
                 document.getElementById('play-btn').disabled = false;
                 document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
@@ -330,7 +359,10 @@ async function init() {
                 document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
             }
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        document.getElementById('loader').style.display = 'none';
+    }
 }
 
 function showModal(prize, isWin) {
