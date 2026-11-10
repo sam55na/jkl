@@ -6,6 +6,7 @@
 <title>Cosmic Blast 3D</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
@@ -14,6 +15,7 @@
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
     .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
+    .balance-text { font-size: 24px; font-weight: 900; color: #00FF88; text-shadow: 0 0 10px #00FF88; }
     
     .bottom-bar { margin-top: auto; padding: 30px 20px; text-align: center; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: auto; }
     .btn-play { 
@@ -33,13 +35,12 @@
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
-    /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
     .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
     .admin-btn { background: #FFD700; color: #000; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-bottom: 15px; }
-    .prize-row { display: flex; gap: 8px; margin-bottom: 8px; background: #111; padding: 10px; border-radius: 8px; align-items: center; }
-    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; }
+    .prize-row { display: flex; gap: 8px; margin-bottom: 8px; background: #111; padding: 10px; border-radius: 8px; align-items: center; flex-wrap: wrap; }
+    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; min-width: 60px; }
     .prize-row input[type="color"] { width: 35px; height: 35px; border: none; background: none; cursor: pointer; }
 </style>
 </head>
@@ -50,6 +51,7 @@
 <div id="ui-layer">
     <div class="top-bar">
         <div class="status-text" id="status-text">استعد للانفجار!</div>
+        <div class="balance-text" id="balance-text">0 SYP</div>
     </div>
     <div class="bottom-bar">
         <button class="btn-play" id="play-btn" disabled>انتظر...</button>
@@ -71,7 +73,7 @@
     <input type="text" id="a-bg" class="admin-input">
     <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
     
-    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز</h3>
+    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز (يمكنك تغيير الصورة)</h3>
     <div id="admin-prizes"></div>
     
     <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
@@ -83,14 +85,31 @@
 // ================================================================
 const API_BASE = 'https://jkl-ttvi.onrender.com';
 const ADMIN_ID = "7011476249";
-const urlParams = new URLSearchParams(window.location.search);
-const isAdmin = urlParams.get('admin_id') === ADMIN_ID;
-const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 123456789;
+
+// جلب الآيدي الحقيقي من تليجرام
+const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+
+// إذا لم يكن هناك مستخدم، لا تفتح اللعبة
+if (!USER_ID) {
+    document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>⚠️ يرجى فتح اللعبة من داخل البوت.</h2>";
+    throw new Error("No Telegram User");
+}
+
+// إظهار لوحة الإدارة تلقائياً للأدمن
+const isAdmin = String(USER_ID) === String(ADMIN_ID);
 
 let winningPrizeId = null;
 let isPlaying = false;
 let planetsMeshes = [];
 let particles = [];
+
+// ================================================================
+//   المؤثرات الصوتية الحقيقية (Howler.js)
+// ================================================================
+const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/impacts/wood_plank_flicks.ogg'], volume: 0.8 });
+const soundSuccess = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg'], volume: 1.0 });
+const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/click.ogg'], volume: 0.5 });
+const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.6 });
 
 // ================================================================
 //   إعداد Three.js
@@ -104,7 +123,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
 pointLight.position.set(0, 0, 20);
@@ -112,8 +131,8 @@ scene.add(pointLight);
 
 // النجوم
 const starGeometry = new THREE.BufferGeometry();
-const starPositions = new Float32Array(2000 * 3);
-for (let i = 0; i < 2000 * 3; i++) starPositions[i] = (Math.random() - 0.5) * 200;
+const starPositions = new Float32Array(3000 * 3);
+for (let i = 0; i < 3000 * 3; i++) starPositions[i] = (Math.random() - 0.5) * 300;
 starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
 const starField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 }));
 scene.add(starField);
@@ -124,14 +143,23 @@ scene.add(sun);
 sun.add(new THREE.PointLight(0xFFD700, 2, 50));
 
 // إنشاء كوكب
-function createPlanet(color, size, orbitRadius, speed, prizeData) {
-    const geometry = new THREE.SphereGeometry(size, 32, 32);
-    const material = new THREE.MeshStandardMaterial({ 
-        color: color, roughness: 0.4, metalness: 0.3, emissive: color, emissiveIntensity: 0.1 
-    });
+function createPlanet(color, textureUrl, size, orbitRadius, speed, prizeData) {
+    const geometry = new THREE.SphereGeometry(size, 64, 64);
+    
+    // استخدام الملمس (الصورة) إذا وجدت، وإلا استخدام اللون
+    let material;
+    if (textureUrl) {
+        const loader = new THREE.TextureLoader();
+        const texture = loader.load(textureUrl);
+        material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.1 });
+    } else {
+        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.3, emissive: color, emissiveIntensity: 0.1 });
+    }
+
     const mesh = new THREE.Mesh(geometry, material);
     mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
     
+    // إضافة حلقة لبعض الكواكب
     if (Math.random() > 0.5) {
         const ring = new THREE.Mesh(
             new THREE.RingGeometry(size * 1.4, size * 1.8, 32), 
@@ -146,7 +174,7 @@ function createPlanet(color, size, orbitRadius, speed, prizeData) {
 
 // انفجار
 function create3DExplosion(position, color) {
-    const particleCount = 150;
+    const particleCount = 200;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const velocities = [];
@@ -179,15 +207,15 @@ function animate() {
         const pos = ps.geometry.attributes.position.array;
         ps.userData.velocities.forEach((v, j) => { pos[j * 3] += v.x; pos[j * 3 + 1] += v.y; pos[j * 3 + 2] += v.z; });
         ps.geometry.attributes.position.needsUpdate = true;
-        ps.material.opacity -= 0.01;
-        ps.userData.life -= 0.01;
+        ps.material.opacity -= 0.015;
+        ps.userData.life -= 0.015;
         if (ps.userData.life <= 0) { scene.remove(ps); particles.splice(i, 1); }
     }
     renderer.render(scene, camera);
 }
 animate();
 
-// التفاعل
+// التفاعل (Raycaster)
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -202,6 +230,8 @@ window.addEventListener('pointerdown', (event) => {
 
 function handlePlanetClick(planet) {
     const prize = planet.userData.prize;
+    
+    // إرسال النقرة للخادم (تخزين حقيقي)
     fetch(`${API_BASE}/api/planet/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,17 +243,25 @@ function handlePlanetClick(planet) {
             isPlaying = false;
             planet.visible = false;
             create3DExplosion(planet.position, prize.color);
+            
+            soundExplosion.play();
+            setTimeout(() => soundSuccess.play(), 600);
+            
             if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
-            setTimeout(() => showModal(data.prize), 1000);
+            
+            setTimeout(() => showModal(data.prize), 1200);
         } else {
+            soundError.play();
             planet.material.emissiveIntensity = 1;
             setTimeout(() => planet.material.emissiveIntensity = 0.1, 200);
+            if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
         }
     });
 }
 
 // بدء اللعبة
 document.getElementById('play-btn').onclick = async () => {
+    soundClick.play();
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
     const res = await fetch(`${API_BASE}/api/planet/start`, {
@@ -251,8 +289,9 @@ async function init() {
     if (data.success) {
         data.prizes.forEach((p, index) => {
             const orbitRadius = 10 + (index * 5);
-            createPlanet(p.color || '#3498db', 2 + (index * 0.5), orbitRadius, 0.002 + (index * 0.001), p);
+            createPlanet(p.color || '#3498db', p.texture_url, 2 + (index * 0.5), orbitRadius, 0.002 + (index * 0.001), p);
         });
+        
         const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
         const statusData = await statusRes.json();
         if (statusData.can_play) {
@@ -263,6 +302,8 @@ async function init() {
             document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
         }
     }
+    
+    // إظهار لوحة الإدارة تلقائياً إذا كان المستخدم هو الأدمن
     if (isAdmin) {
         document.getElementById('admin-panel').classList.add('show');
         loadAdminData();
@@ -292,10 +333,11 @@ async function loadAdminData() {
         prizesData.prizes.forEach(p => {
             html += `
                 <div class="prize-row">
-                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;">
-                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;">
-                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;">
+                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;" placeholder="الاسم">
+                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;" placeholder="المبلغ">
+                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;" placeholder="الاحتمال">
                     <input type="color" value="${p.color}" id="p-color-${p.id}">
+                    <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;" placeholder="رابط الصورة">
                     <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
                 </div>
             `;
@@ -319,10 +361,12 @@ async function savePrize(id) {
     const amount = parseFloat(document.getElementById(`p-amount-${id}`).value);
     const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
     const color = document.getElementById(`p-color-${id}`).value;
+    const texture = document.getElementById(`p-tex-${id}`).value;
+    
     await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, is_active: true })
+        body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, texture_url: texture, is_active: true })
     });
     alert('تم الحفظ');
 }

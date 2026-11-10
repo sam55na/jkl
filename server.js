@@ -1,12 +1,8 @@
 const express = require('express');
 const { Pool } = require('pg');
-const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ================================================================
-//   Middleware & CORS
-// ================================================================
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -17,7 +13,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) { console.error('❌ DATABASE_URL is missing!'); process.exit(1); }
+if (!DATABASE_URL) { console.error('❌ DATABASE_URL missing!'); process.exit(1); }
 
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const ADMIN_ID = 7011476249;
@@ -34,7 +30,7 @@ const TABLE_SCHEMAS = {
             amount DECIMAL(20,2) NOT NULL DEFAULT 0,
             icon VARCHAR(50),
             color VARCHAR(50) DEFAULT '#3498db',
-            color2 VARCHAR(50) DEFAULT '#85c1e9',
+            texture_url TEXT, /* رابط صورة الكوكب */
             size INTEGER DEFAULT 30,
             probability DECIMAL(5,2) NOT NULL DEFAULT 0,
             is_active BOOLEAN DEFAULT TRUE,
@@ -85,10 +81,10 @@ const TABLE_SCHEMAS = {
 };
 
 const DEFAULT_PRIZES = [
-    { name: 'الماسة الفضائية', amount: 1000, icon: '💎', color: '#9b59b6', color2: '#e0b0ff', size: 40, probability: 10 },
-    { name: 'النجم الساطع', amount: 500, icon: '🌟', color: '#f1c40f', color2: '#fffacd', size: 35, probability: 20 },
-    { name: 'كوكب زحل', amount: 200, icon: '🪐', color: '#e67e22', color2: '#f5b041', size: 30, probability: 30 },
-    { name: 'كوكب الأرض', amount: 100, icon: '🌍', color: '#2980b9', color2: '#85c1e9', size: 25, probability: 40 }
+    { name: 'الماسة الفضائية', amount: 1000, icon: '💎', color: '#9b59b6', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/300px-The_Earth_seen_from_Apollo_17.jpg', size: 40, probability: 10 },
+    { name: 'النجم الساطع', amount: 500, icon: '🌟', color: '#f1c40f', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/300px-OSIRIS_Mars_true_color.jpg', size: 35, probability: 20 },
+    { name: 'كوكب زحل', amount: 200, icon: '🪐', color: '#e67e22', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jupiter.jpg/300px-Jupiter.jpg', size: 30, probability: 30 },
+    { name: 'كوكب الأرض', amount: 100, icon: '🌍', color: '#2980b9', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/300px-Saturn_during_Equinox.jpg', size: 25, probability: 40 }
 ];
 
 const DEFAULT_SETTINGS = [
@@ -103,23 +99,23 @@ const DEFAULT_SETTINGS = [
 async function ensureTables() {
     const client = await pool.connect();
     try {
-        for (const table of Object.keys(TABLE_SCHEMAS)) {
-            await client.query(TABLE_SCHEMAS[table]);
-        }
+        for (const table of Object.keys(TABLE_SCHEMAS)) { await client.query(TABLE_SCHEMAS[table]); }
+        
+        // إضافة عمود texture_url في حال كان الجدول موجوداً مسبقاً
+        try { await client.query(`ALTER TABLE planet_prizes ADD COLUMN texture_url TEXT`); } catch(e){}
+
         const prizesCount = await client.query('SELECT COUNT(*) FROM planet_prizes');
         if (parseInt(prizesCount.rows[0].count) === 0) {
             for (const p of DEFAULT_PRIZES) {
                 await client.query(`
-                    INSERT INTO planet_prizes (name, amount, icon, color, color2, size, probability)
+                    INSERT INTO planet_prizes (name, amount, icon, color, texture_url, size, probability)
                     VALUES ($1,$2,$3,$4,$5,$6,$7)
-                `, [p.name, p.amount, p.icon, p.color, p.color2, p.size, p.probability]);
+                `, [p.name, p.amount, p.icon, p.color, p.texture_url, p.size, p.probability]);
             }
         }
         const settingsCount = await client.query('SELECT COUNT(*) FROM planet_settings');
         if (parseInt(settingsCount.rows[0].count) === 0) {
-            for (const s of DEFAULT_SETTINGS) {
-                await client.query(`INSERT INTO planet_settings (setting_key, setting_value) VALUES ($1,$2)`, [s.key, s.value]);
-            }
+            for (const s of DEFAULT_SETTINGS) { await client.query(`INSERT INTO planet_settings (setting_key, setting_value) VALUES ($1,$2)`, [s.key, s.value]); }
         }
         dbReady = true;
         console.log('✅ قاعدة البيانات جاهزة!');
@@ -133,8 +129,7 @@ async function getSetting(key, defaultValue) {
 
 async function getRealDeposits(userId, checkHours) {
     const result = await pool.query(`
-        SELECT COALESCE(SUM(final_amount), 0) as total
-        FROM payments_log
+        SELECT COALESCE(SUM(final_amount), 0) as total FROM payments_log
         WHERE user_id = $1 AND status = 'completed'
           AND method_type NOT IN ('card_game', 'wheel_spin', 'planet_game')
           AND payment_time >= NOW() - ($2::int * INTERVAL '1 hour')
@@ -154,7 +149,7 @@ function checkAdmin(req, res, next) {
 
 app.get('/api/planet/data', async (req, res) => {
     try {
-        const prizes = await pool.query('SELECT id, name, amount, icon, color, color2, size FROM planet_prizes WHERE is_active = true ORDER BY id ASC');
+        const prizes = await pool.query('SELECT id, name, amount, icon, color, texture_url, size FROM planet_prizes WHERE is_active = true ORDER BY id ASC');
         const bg = await getSetting('bg_image_url', '');
         res.json({ success: true, prizes: prizes.rows, background: bg });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -169,10 +164,7 @@ app.get('/api/planet/status/:user_id', async (req, res) => {
         let remaining_hours = 0;
         if (lastGame.rows.length > 0) {
             const hoursDiff = (Date.now() - new Date(lastGame.rows[0].game_date).getTime()) / 3600000;
-            if (hoursDiff < interval) {
-                can_play = false;
-                remaining_hours = Math.ceil(interval - hoursDiff);
-            }
+            if (hoursDiff < interval) { can_play = false; remaining_hours = Math.ceil(interval - hoursDiff); }
         }
         const depositReq = await getSetting('deposit_required', 'false');
         let deposit_met = true;
@@ -227,12 +219,10 @@ app.post('/api/planet/start', async (req, res) => {
 
 app.post('/api/planet/click', async (req, res) => {
     const { user_id, prize_id } = req.body;
-    
     try {
         const session = await pool.query(`SELECT winning_prize_id FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
-        if (session.rows.length === 0) {
-            return res.status(400).json({ success: false, error: 'لا توجد جلسة نشطة' });
-        }
+        if (session.rows.length === 0) return res.status(400).json({ success: false, error: 'لا توجد جلسة نشطة' });
+        
         const realWinningId = session.rows[0].winning_prize_id;
 
         if (prize_id === realWinningId) {
@@ -246,11 +236,7 @@ app.post('/api/planet/click', async (req, res) => {
 
             await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
 
-            res.json({ 
-                success: true, 
-                matched: true, 
-                prize: { name: p.name, amount: parseFloat(p.amount), icon: p.icon }
-            });
+            res.json({ success: true, matched: true, prize: { name: p.name, amount: parseFloat(p.amount), icon: p.icon } });
         } else {
             res.json({ success: true, matched: false });
         }
@@ -265,11 +251,11 @@ app.get('/api/planet/admin/prizes', checkAdmin, async (req, res) => {
 
 app.put('/api/planet/admin/prizes/:id', checkAdmin, async (req, res) => {
     const { id } = req.params;
-    const { name, amount, probability, color, is_active } = req.body;
+    const { name, amount, probability, color, texture_url, is_active } = req.body;
     try {
         await pool.query(`
-            UPDATE planet_prizes SET name = $1, amount = $2, probability = $3, color = $4, is_active = $5 WHERE id = $6
-        `, [name, amount, probability, color, is_active, id]);
+            UPDATE planet_prizes SET name = $1, amount = $2, probability = $3, color = $4, texture_url = $5, is_active = $6 WHERE id = $7
+        `, [name, amount, probability, color, texture_url, is_active, id]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
