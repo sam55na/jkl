@@ -11,60 +11,56 @@
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
 
-    /* شاشة التحميل (مطابقة للبطاقات) */
-    #loading-screen {
-        display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-        z-index: 9999; background: #0a0a0a; flex-direction: column; align-items: center; justify-content: center;
-    }
-    #loading-screen .loading-image {
-        width: 70vw; max-width: 280px; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover;
-        border: 2px solid rgba(255, 215, 0, 0.08); box-shadow: 0 0 80px rgba(255, 215, 0, 0.04);
-        animation: loadingPulse 2s ease-in-out infinite; margin-bottom: 28px;
-    }
-    @keyframes loadingPulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.02); opacity: 0.85; }
-    }
-    #loading-screen .progress-container { width: 60%; max-width: 220px; }
-    #loading-screen .progress-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
-    #loading-screen .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD700, #FF8C00); border-radius: 4px; transition: width 0.3s ease; }
-    #loading-screen .progress-text { color: #888; font-size: 14px; margin-top: 12px; text-align: center; font-weight: 600; letter-spacing: 1px; }
+    /* شاشة التحميل */
+    #loading-screen { position: fixed; inset: 0; background: #0a0a0a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+    #loading-screen .loading-image { width: 70vw; max-width: 280px; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,215,0,0.08); box-shadow: 0 0 80px rgba(255,215,0,0.04); animation: pulse 2s infinite; margin-bottom: 28px; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+    .progress-container { width: 60%; max-width: 220px; }
+    .progress-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD700, #FF8C00); border-radius: 4px; transition: width 0.3s; }
+    .progress-text { color: #888; font-size: 14px; margin-top: 12px; text-align: center; font-weight: 600; letter-spacing: 1px; }
 
+    /* واجهة اللعب */
     #canvas-container { position: absolute; inset: 0; z-index: 1; }
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
-    .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
-    .balance-text { font-size: 24px; font-weight: 900; color: #00FF88; text-shadow: 0 0 10px #00FF88; }
-    
+    .status-text { font-size: 16px; color: #FFD700; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
     .bottom-bar { margin-top: auto; padding: 30px 20px; text-align: center; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: auto; }
-    .btn-play { 
-        background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 40px; 
-        padding: 16px 40px; font-size: 18px; font-weight: 900; cursor: pointer; 
-        box-shadow: 0 0 30px rgba(255, 215, 0, 0.4); transition: 0.3s; width: 100%; max-width: 300px;
-    }
-    .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+    .btn-play { background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 40px; padding: 16px 40px; font-size: 18px; font-weight: 900; cursor: pointer; width: 100%; max-width: 300px; }
+    .btn-play:disabled { background: #333; color: #777; cursor: not-allowed; }
 
+    /* المودال */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
-    .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; box-shadow: 0 0 60px rgba(255,215,0,0.4); }
+    .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; }
     #modal.show .card { transform: scale(1); }
-    .card-icon { font-size: 80px; margin-bottom: 10px; animation: float 2s infinite; }
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+    .card-icon { font-size: 80px; margin-bottom: 10px; }
     .card-title { color: #FFD700; font-size: 24px; font-weight: bold; margin-bottom: 10px; }
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
+    /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
-    .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
-    .admin-btn { background: #FFD700; color: #000; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-bottom: 15px; }
-    .prize-row { display: flex; gap: 8px; margin-bottom: 8px; background: #111; padding: 10px; border-radius: 8px; align-items: center; flex-wrap: wrap; }
-    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; min-width: 60px; }
+    .admin-header { color: #FFD700; margin-bottom: 20px; text-align: center; font-size: 20px; font-weight: bold; }
+    
+    .setting-group { background: #111; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+    .setting-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .setting-row label { color: #888; font-size: 13px; min-width: 100px; }
+    .setting-row input { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; outline: none; min-width: 150px; font-size: 13px; }
+    .btn-save { background: #FFD700; color: #000; padding: 10px 20px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; }
+    .btn-save:active { transform: scale(0.95); }
+    .btn-danger { background: #ff4444; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
+    
+    .prize-item { background: #111; border: 1px solid #222; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+    .prize-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; min-width: 60px; font-size: 12px; }
+    .prize-row input[type="color"] { width: 40px; height: 40px; border: none; background: none; cursor: pointer; }
+    .add-prize-btn { background: #00FF88; color: #000; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; margin-bottom: 15px; font-size: 14px; }
 </style>
 </head>
 <body>
 
-<!-- شاشة التحميل (مطابقة للبطاقات) -->
 <div id="loading-screen">
     <img class="loading-image" id="loadingImage" src="https://via.placeholder.com/200/1a1a2e/FFD700?text=🪐" alt="Loading">
     <div class="progress-container">
@@ -76,11 +72,9 @@
 </div>
 
 <div id="canvas-container"></div>
-
 <div id="ui-layer">
     <div class="top-bar">
         <div class="status-text" id="status-text">استعد للانفجار!</div>
-        <div class="balance-text" id="balance-text">0 SYP</div>
     </div>
     <div class="bottom-bar">
         <button class="btn-play" id="play-btn" disabled>انتظر...</button>
@@ -97,21 +91,38 @@
 </div>
 
 <div id="admin-panel">
-    <h2 style="color:#FFD700; margin-bottom: 20px; text-align:center;">⚙️ لوحة الإدارة</h2>
-    <label style="color:#888; font-size:12px;">رابط الخلفية:</label>
-    <input type="text" id="a-bg" class="admin-input">
-    <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
-    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز</h3>
-    <div id="admin-prizes"></div>
-    <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
+    <h2 class="admin-header">⚙️ لوحة الإدارة</h2>
+    
+    <div class="setting-group">
+        <h3 style="color: #FFD700; margin-bottom: 10px; font-size: 16px;">🖼️ الصور والخلفيات</h3>
+        <div class="setting-row">
+            <label>صورة الخلفية:</label>
+            <input type="text" id="a-bg" placeholder="رابط صورة الخلفية">
+            <button class="btn-save" onclick="saveSetting('bg_image_url', document.getElementById('a-bg').value)">حفظ</button>
+        </div>
+        <div class="setting-row">
+            <label>صورة اللودينغ:</label>
+            <input type="text" id="a-loading" placeholder="رابط صورة التحميل">
+            <button class="btn-save" onclick="saveSetting('loading_image_url', document.getElementById('a-loading').value)">حفظ</button>
+        </div>
+    </div>
+
+    <div class="setting-group">
+        <h3 style="color: #FFD700; margin-bottom: 10px; font-size: 16px;">🪐 الجوائز والكواكب</h3>
+        <button class="add-prize-btn" onclick="addPrize()">➕ إضافة جائزة جديدة (كوكب)</button>
+        <div id="admin-prizes"></div>
+    </div>
+    
+    <button class="btn-danger" style="width: 100%; margin-top: 10px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق اللوحة</button>
 </div>
 
 <script>
 // ================================================================
-//   الإعدادات الأساسية
+//   1. الإعدادات والتحقق من المستخدم
 // ================================================================
-const API_BASE = 'https://jkl-ttvi.onrender.com';
+const API_BASE = 'https://jkl-ttvi.onrender.com'; // ⚠️ ضع رابط خادمك هنا
 const ADMIN_ID = "7011476249";
+
 const urlParams = new URLSearchParams(window.location.search);
 let USER_ID = parseInt(urlParams.get('user_id')) || window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
@@ -123,13 +134,15 @@ if (!USER_ID) {
 const isAdmin = String(USER_ID) === String(ADMIN_ID);
 if (isAdmin) {
     document.getElementById('admin-panel').classList.add('show');
-    loadAdminData();
 }
 
-let isPlaying = false, planetsMeshes = [], particles = [];
+let isPlaying = false;
+let planetsMeshes = [];
+let particles = [];
+let currentSettings = {};
 
 // ================================================================
-//   الصوتيات (تشمل صوت الخلفية)
+//   2. الأصوات
 // ================================================================
 const soundAmbient = new Howl({ src: ['https://actions.google.com/sounds/v1/ambiences/deep_space_ambience.ogg'], loop: true, volume: 0.3 });
 const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/explosions/deep_explosion.ogg'], volume: 0.9 });
@@ -138,7 +151,7 @@ const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/cli
 const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.5 });
 
 // ================================================================
-//   Three.js
+//   3. إعداد Three.js
 // ================================================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -151,48 +164,40 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
-const dirLight1 = new THREE.DirectionalLight(0xffffff, 1);
-dirLight1.position.set(1, 1, 1);
-scene.add(dirLight1);
-const dirLight2 = new THREE.DirectionalLight(0xffffff, 1);
-dirLight2.position.set(-1, -1, -1);
-scene.add(dirLight2);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(1, 1, 1);
+scene.add(dirLight);
 
-const starGeometry = new THREE.BufferGeometry();
-const starPositions = new Float32Array(3000 * 3);
-for (let i = 0; i < 3000 * 3; i++) starPositions[i] = (Math.random() - 0.5) * 300;
-starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(3000 * 3);
+for (let i = 0; i < 3000 * 3; i++) starPos[i] = (Math.random() - 0.5) * 300;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
 
 // ================================================================
-//   إنشاء الكوكب (تغطية 100% للصورة)
+//   4. دوال إنشاء الكواكب والانفجارات
 // ================================================================
+function clearPlanets() {
+    planetsMeshes.forEach(m => scene.remove(m));
+    planetsMeshes = [];
+}
+
 function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
-    const size = 5;
-    const geometry = new THREE.SphereGeometry(size, 128, 128);
+    const geo = new THREE.SphereGeometry(5, 128, 128);
+    let mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9, metalness: 0.1 });
     
-    let material;
     if (textureUrl) {
-        const loader = new THREE.TextureLoader();
-        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9, metalness: 0.1 });
-        
-        loader.load(textureUrl, (texture) => {
-            // ✅ إصلاح تغطية الصورة
-            texture.wrapS = THREE.RepeatWrapping;
-            texture.wrapT = THREE.RepeatWrapping;
-            texture.repeat.set(1, 1);
-            texture.offset.set(0, 0);
-            texture.center.set(0.5, 0.5);
-            texture.minFilter = THREE.LinearFilter;
-            
-            material.map = texture;
-            material.needsUpdate = true;
+        new THREE.TextureLoader().load(textureUrl, (tex) => {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 1);
+            tex.center.set(0.5, 0.5);
+            mat.map = tex;
+            mat.needsUpdate = true;
         });
-    } else {
-        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 });
     }
-
-    const mesh = new THREE.Mesh(geometry, material);
+    
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
     scene.add(mesh);
     planetsMeshes.push(mesh);
@@ -211,8 +216,12 @@ function create3DExplosion(position, color) {
     particles.push(ps);
 }
 
+// ================================================================
+//   5. حلقة الرسم
+// ================================================================
 function animate() {
     requestAnimationFrame(animate);
+    
     planetsMeshes.forEach(m => {
         if (!m.visible) return;
         const d = m.userData;
@@ -236,7 +245,7 @@ function animate() {
 animate();
 
 // ================================================================
-//   التفاعل
+//   6. التفاعل
 // ================================================================
 const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
 window.addEventListener('pointerdown', (e) => {
@@ -250,7 +259,7 @@ window.addEventListener('pointerdown', (e) => {
 
 function handlePlanetClick(planet) {
     isPlaying = false;
-    soundAmbient.stop(); // إيقاف صوت الخلفية فوراً
+    soundAmbient.stop();
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "انتهت الجولة!";
 
@@ -259,9 +268,7 @@ function handlePlanetClick(planet) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: USER_ID, prize_id: prize.id })
-    })
-    .then(r => r.json())
-    .then(data => {
+    }).then(r => r.json()).then(data => {
         if (data.matched) {
             planet.visible = false;
             create3DExplosion(planet.position, prize.color);
@@ -277,56 +284,143 @@ function handlePlanetClick(planet) {
     });
 }
 
-document.getElementById('play-btn').onclick = async () => {
-    soundClick.play();
-    document.getElementById('play-btn').disabled = true;
-    document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
-    
-    const res = await fetch(`${API_BASE}/api/planet/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-        isPlaying = true;
-        soundAmbient.play(); // بدء صوت الخلفية
-        document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
-        document.getElementById('status-text').textContent = "ابحث عن الكوكب...";
-    } else {
-        alert(data.error);
-        document.getElementById('play-btn').disabled = false;
-        document.getElementById('play-btn').textContent = "حاول مجدداً";
-    }
-};
-
 // ================================================================
-//   شاشة التحميل والتهيئة
+//   7. الإدارة (لوحة التحكم)
 // ================================================================
-function updateLoading(progress) {
-    document.getElementById('loaderProgressBar').style.width = progress + '%';
-    document.getElementById('loaderStatusText').textContent = progress + '%';
+async function saveSetting(key, value) {
+    try {
+        const res = await fetch(`${API_BASE}/api/planet/admin/setting`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: ADMIN_ID, key, value })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ تم الحفظ بنجاح');
+            if (key === 'bg_image_url') currentSettings.bg_image_url = value;
+            if (key === 'loading_image_url') document.getElementById('loadingImage').src = value;
+        } else {
+            alert('❌ فشل الحفظ: ' + data.error);
+        }
+    } catch(e) { alert('❌ خطأ في الاتصال'); }
 }
 
-async function init() {
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        if (progress > 90) progress = 90;
-        updateLoading(Math.round(progress));
-    }, 100);
+async function loadAdminData() {
+    try {
+        const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
+        const settingsData = await settingsRes.json();
+        if (settingsData.success) {
+            currentSettings = settingsData.settings;
+            document.getElementById('a-bg').value = currentSettings.bg_image_url || '';
+            document.getElementById('a-loading').value = currentSettings.loading_image_url || '';
+        }
 
+        const prizesRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
+        const prizesData = await prizesRes.json();
+        if (prizesData.success) {
+            renderAdminPrizes(prizesData.prizes);
+        }
+    } catch(e) { console.error(e); }
+}
+
+function renderAdminPrizes(prizes) {
+    let html = '';
+    prizes.forEach(p => {
+        html += `
+            <div class="prize-item">
+                <div class="prize-row" style="margin-bottom: 8px;">
+                    <input type="text" value="${p.name}" id="p-name-${p.id}" placeholder="اسم الجائزة" style="flex:2;">
+                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" placeholder="المبلغ" style="flex:1;">
+                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" placeholder="نسبة %" style="flex:1;">
+                </div>
+                <div class="prize-row">
+                    <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" placeholder="رابط صورة الكوكب" style="flex:3;">
+                    <input type="color" value="${p.color || '#3498db'}" id="p-color-${p.id}">
+                    <button class="btn-save" onclick="savePrize(${p.id})">حفظ</button>
+                    <button class="btn-danger" onclick="deletePrize(${p.id})">حذف</button>
+                </div>
+            </div>
+        `;
+    });
+    document.getElementById('admin-prizes').innerHTML = html;
+}
+
+async function savePrize(id) {
+    const name = document.getElementById(`p-name-${id}`).value;
+    const amount = parseFloat(document.getElementById(`p-amount-${id}`).value);
+    const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
+    const tex = document.getElementById(`p-tex-${id}`).value;
+    const color = document.getElementById(`p-color-${id}`).value;
+    
+    try {
+        await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, texture_url: tex, is_active: true })
+        });
+        alert('✅ تم حفظ الجائزة');
+        loadGame(); // إعادة تحميل الكواكب
+    } catch(e) { alert('❌ خطأ في الحفظ'); }
+}
+
+async function addPrize() {
+    try {
+        const res = await fetch(`${API_BASE}/api/planet/admin/prizes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                admin_id: ADMIN_ID, 
+                name: 'جائزة جديدة', 
+                amount: 50, 
+                probability: 10, 
+                color: '#e74c3c', 
+                texture_url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg' 
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ تمت الإضافة');
+            loadAdminData(); // تحديث القائمة
+            loadGame(); // تحديث الكواكب
+        }
+    } catch(e) { alert('❌ خطأ'); }
+}
+
+async function deletePrize(id) {
+    if (!confirm('هل أنت متأكد من حذف هذه الجائزة؟')) return;
+    try {
+        await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_id: ADMIN_ID })
+        });
+        alert('✅ تم الحذف');
+        loadAdminData();
+        loadGame();
+    } catch(e) { alert('❌ خطأ'); }
+}
+
+// ================================================================
+//   8. التهيئة
+// ================================================================
+async function loadGame() {
     try {
         const res = await fetch(`${API_BASE}/api/planet/data`);
         const data = await res.json();
         
         if (data.success) {
+            // إخفاء الكواكب القديمة وإضافة الجديدة
+            clearPlanets();
             data.prizes.forEach((p, index) => {
-                const orbitRadius = 12 + (index * 6); 
+                const orbitRadius = 12 + (index * 6);
                 createPlanet(p.texture_url, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
             });
+            
+            if (data.background) {
+                document.body.style.backgroundImage = `url('${data.background}')`;
+            }
 
+            // حالة المستخدم
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
             if (statusData.can_play) {
@@ -337,15 +431,42 @@ async function init() {
                 document.getElementById('play-btn').textContent = `انتظر ${statusData.remaining_hours} ساعة`;
             }
         }
-    } catch (e) { console.error(e); }
+    } catch(e) { console.error(e); }
+}
+
+function updateLoading(p) { 
+    document.getElementById('loaderProgressBar').style.width = p + '%'; 
+    document.getElementById('loaderStatusText').textContent = p + '%'; 
+}
+
+async function init() {
+    let progress = 0;
+    const interval = setInterval(() => { progress += Math.random() * 10; if (progress > 90) progress = 90; updateLoading(Math.round(progress)); }, 100);
+
+    await loadGame();
+    
+    if (isAdmin) loadAdminData();
 
     clearInterval(interval);
     updateLoading(100);
-    setTimeout(() => {
-        document.getElementById('loading-screen').style.opacity = '0';
-        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+    setTimeout(() => { 
+        document.getElementById('loading-screen').style.opacity = '0'; 
+        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500); 
     }, 500);
 }
+
+document.getElementById('play-btn').onclick = async () => {
+    soundClick.play();
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
+    const res = await fetch(`${API_BASE}/api/planet/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: USER_ID }) });
+    const data = await res.json();
+    if (data.success) {
+        isPlaying = true;
+        soundAmbient.play();
+        document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
+    } else { alert(data.error); document.getElementById('play-btn').disabled = false; document.getElementById('play-btn').textContent = "حاول مجدداً"; }
+};
 
 function showModal(prize, isWin) {
     if (isWin && prize) {
@@ -359,49 +480,8 @@ function showModal(prize, isWin) {
         document.getElementById('m-amount').textContent = '';
     }
     document.getElementById('modal').classList.add('show');
-    document.getElementById('status-text').textContent = "عد غداً!";
 }
 document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('show');
-
-// الإدارة
-async function loadAdminData() {
-    try {
-        const sRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
-        const sData = await sRes.json();
-        if (sData.success) document.getElementById('a-bg').value = sData.settings.bg_image_url || '';
-
-        const pRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
-        const pData = await pRes.json();
-        if (pData.success) {
-            let html = '';
-            pData.prizes.forEach(p => {
-                html += `<div class="prize-row">
-                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;">
-                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;">
-                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;">
-                    <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;">
-                    <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
-                </div>`;
-            });
-            document.getElementById('admin-prizes').innerHTML = html;
-        }
-    } catch(e) { console.error(e); }
-}
-
-async function saveBg() {
-    const val = document.getElementById('a-bg').value;
-    await fetch(`${API_BASE}/api/planet/admin/setting`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val }) });
-    alert('✅ تم الحفظ');
-}
-
-async function savePrize(id) {
-    const name = document.getElementById(`p-name-${id}`).value;
-    const amount = parseFloat(document.getElementById(`p-amount-${id}`).value);
-    const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
-    const tex = document.getElementById(`p-tex-${id}`).value;
-    await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color: '#3498db', texture_url: tex, is_active: true }) });
-    alert('✅ تم الحفظ');
-}
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
