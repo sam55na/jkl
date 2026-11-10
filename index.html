@@ -10,16 +10,27 @@
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
-    #canvas-container { position: absolute; inset: 0; z-index: 1; }
-    
-    /* شاشة التحميل */
-    #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
-    .spinner { width: 60px; height: 60px; border: 4px solid rgba(255, 215, 0, 0.1); border-top-color: #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .loading-text { color: #FFD700; letter-spacing: 2px; font-weight: bold; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-    /* واجهة المستخدم */
+    /* شاشة التحميل (مطابقة للبطاقات) */
+    #loading-screen {
+        display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        z-index: 9999; background: #0a0a0a; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #loading-screen .loading-image {
+        width: 70vw; max-width: 280px; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover;
+        border: 2px solid rgba(255, 215, 0, 0.08); box-shadow: 0 0 80px rgba(255, 215, 0, 0.04);
+        animation: loadingPulse 2s ease-in-out infinite; margin-bottom: 28px;
+    }
+    @keyframes loadingPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.02); opacity: 0.85; }
+    }
+    #loading-screen .progress-container { width: 60%; max-width: 220px; }
+    #loading-screen .progress-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; }
+    #loading-screen .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD700, #FF8C00); border-radius: 4px; transition: width 0.3s ease; }
+    #loading-screen .progress-text { color: #888; font-size: 14px; margin-top: 12px; text-align: center; font-weight: 600; letter-spacing: 1px; }
+
+    #canvas-container { position: absolute; inset: 0; z-index: 1; }
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
     .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
@@ -33,7 +44,6 @@
     }
     .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
 
-    /* المودال */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
     .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; box-shadow: 0 0 60px rgba(255,215,0,0.4); }
@@ -44,21 +54,25 @@
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
-    /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
     .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
     .admin-btn { background: #FFD700; color: #000; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-bottom: 15px; }
     .prize-row { display: flex; gap: 8px; margin-bottom: 8px; background: #111; padding: 10px; border-radius: 8px; align-items: center; flex-wrap: wrap; }
     .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; min-width: 60px; }
-    .prize-row input[type="color"] { width: 35px; height: 35px; border: none; background: none; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<div id="loader">
-    <div class="spinner"></div>
-    <div class="loading-text">جاري مسح المجرة...</div>
+<!-- شاشة التحميل (مطابقة للبطاقات) -->
+<div id="loading-screen">
+    <img class="loading-image" id="loadingImage" src="https://via.placeholder.com/200/1a1a2e/FFD700?text=🪐" alt="Loading">
+    <div class="progress-container">
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="loaderProgressBar"></div>
+        </div>
+        <div class="progress-text" id="loaderStatusText">0%</div>
+    </div>
 </div>
 
 <div id="canvas-container"></div>
@@ -87,16 +101,14 @@
     <label style="color:#888; font-size:12px;">رابط الخلفية:</label>
     <input type="text" id="a-bg" class="admin-input">
     <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
-    
     <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز</h3>
     <div id="admin-prizes"></div>
-    
     <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
 </div>
 
 <script>
 // ================================================================
-//   الإعدادات والتحقق
+//   الإعدادات الأساسية
 // ================================================================
 const API_BASE = 'https://jkl-ttvi.onrender.com';
 const ADMIN_ID = "7011476249";
@@ -105,7 +117,7 @@ let USER_ID = parseInt(urlParams.get('user_id')) || window.Telegram?.WebApp?.ini
 
 if (!USER_ID) {
     document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>⚠️ يرجى فتح اللعبة من داخل البوت.</h2>";
-    throw new Error("No User ID provided");
+    throw new Error("No User ID");
 }
 
 const isAdmin = String(USER_ID) === String(ADMIN_ID);
@@ -114,14 +126,10 @@ if (isAdmin) {
     loadAdminData();
 }
 
-let isPlaying = false;
-let planetsMeshes = [];
-let particles = [];
-let loadedTextures = 0;
-let totalTextures = 0;
+let isPlaying = false, planetsMeshes = [], particles = [];
 
 // ================================================================
-//   الأصوات
+//   الصوتيات (تشمل صوت الخلفية)
 // ================================================================
 const soundAmbient = new Howl({ src: ['https://actions.google.com/sounds/v1/ambiences/deep_space_ambience.ogg'], loop: true, volume: 0.3 });
 const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/explosions/deep_explosion.ogg'], volume: 0.9 });
@@ -130,18 +138,17 @@ const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/cli
 const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.5 });
 
 // ================================================================
-//   إعداد Three.js
+//   Three.js
 // ================================================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 80; 
+camera.position.z = 80;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// إضاءة قوية جداً
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
 scene.add(ambientLight);
 const dirLight1 = new THREE.DirectionalLight(0xffffff, 1);
@@ -151,97 +158,73 @@ const dirLight2 = new THREE.DirectionalLight(0xffffff, 1);
 dirLight2.position.set(-1, -1, -1);
 scene.add(dirLight2);
 
-// النجوم
 const starGeometry = new THREE.BufferGeometry();
 const starPositions = new Float32Array(3000 * 3);
 for (let i = 0; i < 3000 * 3; i++) starPositions[i] = (Math.random() - 0.5) * 300;
 starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-const starField = new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 }));
-scene.add(starField);
+scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
 
 // ================================================================
-//   إنشاء الكوكب (تغطية كاملة 360 درجة)
+//   إنشاء الكوكب (تغطية 100% للصورة)
 // ================================================================
 function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
-    const size = 5; 
-    // دقة عالية جداً
-    const geometry = new THREE.SphereGeometry(size, 128, 128); 
+    const size = 5;
+    const geometry = new THREE.SphereGeometry(size, 128, 128);
     
     let material;
     if (textureUrl) {
         const loader = new THREE.TextureLoader();
-        // إضافة رد نداء عند تحميل الصورة لضمان التغطية
+        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9, metalness: 0.1 });
+        
         loader.load(textureUrl, (texture) => {
-            // ✅ إعدادات الالتفاف الإجباري (Equirectangular)
-            texture.wrapS = THREE.RepeatWrapping; 
-            texture.wrapT = THREE.RepeatWrapping; 
-            texture.repeat.set(1, 1); 
-            texture.offset.set(0, 0); 
-            texture.center.set(0.5, 0.5); 
+            // ✅ إصلاح تغطية الصورة
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(1, 1);
+            texture.offset.set(0, 0);
+            texture.center.set(0.5, 0.5);
+            texture.minFilter = THREE.LinearFilter;
             
             material.map = texture;
             material.needsUpdate = true;
-            
-            // تحديث شاشة التحميل
-            loadedTextures++;
-            if (loadedTextures >= totalTextures) {
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-            }
-        });
-        
-        // إنشاء المادة بلون مبدئي ثم استبدالها بالصورة
-        material = new THREE.MeshStandardMaterial({ 
-            color: color,
-            roughness: 0.9, 
-            metalness: 0.1 
         });
     } else {
-        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7, metalness: 0.2 });
+        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 });
     }
 
     const mesh = new THREE.Mesh(geometry, material);
     mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
-    
     scene.add(mesh);
     planetsMeshes.push(mesh);
 }
 
-// انفجار
 function create3DExplosion(position, color) {
-    const particleCount = 200;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const velocities = [];
-    for (let i = 0; i < particleCount; i++) {
-        positions[i * 3] = position.x; positions[i * 3 + 1] = position.y; positions[i * 3 + 2] = position.z;
-        velocities.push(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(Math.random() * 1.5 + 0.5));
+    const c = 200, g = new THREE.BufferGeometry(), p = new Float32Array(c * 3), v = [];
+    for (let i = 0; i < c; i++) {
+        p[i * 3] = position.x; p[i * 3 + 1] = position.y; p[i * 3 + 2] = position.z;
+        v.push(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(Math.random() * 1.5 + 0.5));
     }
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const particleSystem = new THREE.Points(geometry, new THREE.PointsMaterial({ color: color, size: 0.8, transparent: true, opacity: 1 }));
-    particleSystem.userData = { velocities, life: 1 };
-    scene.add(particleSystem);
-    particles.push(particleSystem);
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    const ps = new THREE.Points(g, new THREE.PointsMaterial({ color: color, size: 0.8, transparent: true }));
+    ps.userData = { velocities: v, life: 1 };
+    scene.add(ps);
+    particles.push(ps);
 }
 
-// حلقة الرسم
 function animate() {
     requestAnimationFrame(animate);
-    starField.rotation.y += 0.0005;
-    
-    planetsMeshes.forEach(mesh => {
-        if (!mesh.visible) return;
-        const d = mesh.userData;
+    planetsMeshes.forEach(m => {
+        if (!m.visible) return;
+        const d = m.userData;
         d.angle += d.speed;
-        mesh.position.x = Math.cos(d.angle) * d.orbitRadius;
-        mesh.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 20;
-        mesh.position.y = Math.sin(d.angle) * d.orbitRadius * 0.3;
-        mesh.rotation.y += 0.003;
+        m.position.x = Math.cos(d.angle) * d.orbitRadius;
+        m.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 20;
+        m.position.y = Math.sin(d.angle) * d.orbitRadius * 0.3;
+        m.rotation.y += 0.003;
     });
 
     for (let i = particles.length - 1; i >= 0; i--) {
-        const ps = particles[i];
-        const pos = ps.geometry.attributes.position.array;
+        const ps = particles[i], pos = ps.geometry.attributes.position.array;
         ps.userData.velocities.forEach((v, j) => { pos[j * 3] += v.x; pos[j * 3 + 1] += v.y; pos[j * 3 + 2] += v.z; });
         ps.geometry.attributes.position.needsUpdate = true;
         ps.material.opacity -= 0.015;
@@ -252,27 +235,26 @@ function animate() {
 }
 animate();
 
-// التفاعل
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-window.addEventListener('pointerdown', (event) => {
+// ================================================================
+//   التفاعل
+// ================================================================
+const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+window.addEventListener('pointerdown', (e) => {
     if (!isPlaying) return;
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(planetsMeshes);
     if (intersects.length > 0) handlePlanetClick(intersects[0].object);
 });
 
 function handlePlanetClick(planet) {
-    isPlaying = false; 
-    soundAmbient.stop(); 
+    isPlaying = false;
+    soundAmbient.stop(); // إيقاف صوت الخلفية فوراً
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "انتهت الجولة!";
 
     const prize = planet.userData.prize;
-    
     fetch(`${API_BASE}/api/planet/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -281,36 +263,35 @@ function handlePlanetClick(planet) {
     .then(r => r.json())
     .then(data => {
         if (data.matched) {
-            planet.visible = false; 
+            planet.visible = false;
             create3DExplosion(planet.position, prize.color);
             soundExplosion.play();
             setTimeout(() => soundSuccess.play(), 800);
-            if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
             setTimeout(() => showModal(data.prize, true), 1200);
         } else {
-            planet.visible = false; 
+            planet.visible = false;
             create3DExplosion(planet.position, '#ff4444');
             soundError.play();
-            if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
             setTimeout(() => showModal(null, false), 1200);
         }
     });
 }
 
-// بدء اللعبة
 document.getElementById('play-btn').onclick = async () => {
     soundClick.play();
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
+    
     const res = await fetch(`${API_BASE}/api/planet/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: USER_ID })
     });
     const data = await res.json();
+    
     if (data.success) {
         isPlaying = true;
-        soundAmbient.play();
+        soundAmbient.play(); // بدء صوت الخلفية
         document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
         document.getElementById('status-text').textContent = "ابحث عن الكوكب...";
     } else {
@@ -320,34 +301,31 @@ document.getElementById('play-btn').onclick = async () => {
     }
 };
 
+// ================================================================
+//   شاشة التحميل والتهيئة
+// ================================================================
+function updateLoading(progress) {
+    document.getElementById('loaderProgressBar').style.width = progress + '%';
+    document.getElementById('loaderStatusText').textContent = progress + '%';
+}
+
 async function init() {
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 90) progress = 90;
+        updateLoading(Math.round(progress));
+    }, 100);
+
     try {
         const res = await fetch(`${API_BASE}/api/planet/data`);
         const data = await res.json();
         
         if (data.success) {
-            totalTextures = data.prizes.length; // عدد الصور التي يجب تحميلها
-            
-            // روابط كواكب حقيقية بنسبة 2:1 (Equirectangular) لتغطية الكوكب 100%
-            const planetTextures = [
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter_2k.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn_2k.jpg'
-            ];
-
             data.prizes.forEach((p, index) => {
                 const orbitRadius = 12 + (index * 6); 
-                // استخدام صورة الكوكب المخصصة، أو الصورة الافتراضية
-                const textureUrl = p.texture_url || planetTextures[index % planetTextures.length];
-                createPlanet(textureUrl, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
+                createPlanet(p.texture_url, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
             });
-            
-            // إذا لم تكن هناك صور، نخفي التحميل
-            if (totalTextures === 0) {
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-            }
 
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
@@ -356,13 +334,17 @@ async function init() {
                 document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
             } else {
                 document.getElementById('play-btn').disabled = true;
-                document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
+                document.getElementById('play-btn').textContent = `انتظر ${statusData.remaining_hours} ساعة`;
             }
         }
-    } catch (e) { 
-        console.error(e); 
-        document.getElementById('loader').style.display = 'none';
-    }
+    } catch (e) { console.error(e); }
+
+    clearInterval(interval);
+    updateLoading(100);
+    setTimeout(() => {
+        document.getElementById('loading-screen').style.opacity = '0';
+        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+    }, 500);
 }
 
 function showModal(prize, isWin) {
@@ -379,31 +361,27 @@ function showModal(prize, isWin) {
     document.getElementById('modal').classList.add('show');
     document.getElementById('status-text').textContent = "عد غداً!";
 }
-
 document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('show');
 
-// لوحة الإدارة
+// الإدارة
 async function loadAdminData() {
     try {
-        const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
-        const settingsData = await settingsRes.json();
-        if (settingsData.success) document.getElementById('a-bg').value = settingsData.settings.bg_image_url || '';
+        const sRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
+        const sData = await sRes.json();
+        if (sData.success) document.getElementById('a-bg').value = sData.settings.bg_image_url || '';
 
-        const prizesRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
-        const prizesData = await prizesRes.json();
-        if (prizesData.success) {
+        const pRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
+        const pData = await pRes.json();
+        if (pData.success) {
             let html = '';
-            prizesData.prizes.forEach(p => {
-                html += `
-                    <div class="prize-row">
-                        <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;" placeholder="الاسم">
-                        <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;" placeholder="المبلغ">
-                        <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;" placeholder="الاحتمال">
-                        <input type="color" value="${p.color}" id="p-color-${p.id}">
-                        <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;" placeholder="رابط الصورة">
-                        <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
-                    </div>
-                `;
+            pData.prizes.forEach(p => {
+                html += `<div class="prize-row">
+                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;">
+                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;">
+                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;">
+                    <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;">
+                    <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
+                </div>`;
             });
             document.getElementById('admin-prizes').innerHTML = html;
         }
@@ -412,11 +390,7 @@ async function loadAdminData() {
 
 async function saveBg() {
     const val = document.getElementById('a-bg').value;
-    await fetch(`${API_BASE}/api/planet/admin/setting`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val })
-    });
+    await fetch(`${API_BASE}/api/planet/admin/setting`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val }) });
     alert('✅ تم الحفظ');
 }
 
@@ -424,14 +398,8 @@ async function savePrize(id) {
     const name = document.getElementById(`p-name-${id}`).value;
     const amount = parseFloat(document.getElementById(`p-amount-${id}`).value);
     const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
-    const color = document.getElementById(`p-color-${id}`).value;
-    const texture = document.getElementById(`p-tex-${id}`).value;
-    
-    await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, texture_url: texture, is_active: true })
-    });
+    const tex = document.getElementById(`p-tex-${id}`).value;
+    await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color: '#3498db', texture_url: tex, is_active: true }) });
     alert('✅ تم الحفظ');
 }
 
