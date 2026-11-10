@@ -12,7 +12,7 @@
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
     #canvas-container { position: absolute; inset: 0; z-index: 1; }
     
-    /* واجهة المستخدم */
+    /* ===== واجهة المستخدم ===== */
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
     .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
@@ -26,7 +26,7 @@
     }
     .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
 
-    /* المودال */
+    /* ===== المودال ===== */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
     .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; box-shadow: 0 0 60px rgba(255,215,0,0.4); }
@@ -37,7 +37,7 @@
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
-    /* لوحة الإدارة */
+    /* ===== لوحة الإدارة ===== */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
     .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
@@ -76,7 +76,7 @@
     <input type="text" id="a-bg" class="admin-input">
     <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
     
-    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز (يمكنك تغيير الصورة)</h3>
+    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز (الاسم، المبلغ، الاحتمال، اللون، رابط الصورة)</h3>
     <div id="admin-prizes"></div>
     
     <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
@@ -84,29 +84,27 @@
 
 <script>
 // ================================================================
-//   1. التحقق من المستخدم (يدعم الرابط وتليجرام)
+//   1. الإعدادات الأساسية والتحقق من المستخدم
 // ================================================================
-const API_BASE = 'https://jkl-ttvi.onrender.com'; // ضع رابط خادمك هنا
-const ADMIN_ID = "7011476249";
+const API_BASE = 'https://jkl-ttvi.onrender.com'; // رابط خادمك
+const ADMIN_ID = "7011476249"; // معرف الآدمن
 
 // استخراج الآيدي من الرابط أولاً، ثم من تليجرام
 const urlParams = new URLSearchParams(window.location.search);
 let USER_ID = parseInt(urlParams.get('user_id')) || window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
-// إذا لم يوجد آيدي، نوقف اللعبة
 if (!USER_ID) {
     document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>⚠️ يرجى فتح اللعبة من داخل البوت.</h2>";
     throw new Error("No User ID provided");
 }
 
-// إظهار لوحة الإدارة تلقائياً إذا كان الآيدي يطابق الأدمن
+// إظهار لوحة الإدارة تلقائياً لصاحب الآيدي المحدد
 const isAdmin = String(USER_ID) === String(ADMIN_ID);
 if (isAdmin) {
     document.getElementById('admin-panel').classList.add('show');
     loadAdminData();
 }
 
-let winningPrizeId = null;
 let isPlaying = false;
 let planetsMeshes = [];
 let particles = [];
@@ -120,11 +118,11 @@ const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/cli
 const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.6 });
 
 // ================================================================
-//   3. إعداد Three.js
+//   3. إعداد Three.js (الرسوميات ثلاثية الأبعاد)
 // ================================================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 50;
+camera.position.z = 60; 
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -132,10 +130,10 @@ renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // الإضاءة
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
-pointLight.position.set(0, 0, 20);
+pointLight.position.set(0, 0, 30);
 scene.add(pointLight);
 
 // النجوم
@@ -151,35 +149,39 @@ const sun = new THREE.Mesh(new THREE.SphereGeometry(3, 32, 32), new THREE.MeshBa
 scene.add(sun);
 sun.add(new THREE.PointLight(0xFFD700, 2, 50));
 
-// إنشاء كوكب
-function createPlanet(color, textureUrl, size, orbitRadius, speed, prizeData) {
-    const geometry = new THREE.SphereGeometry(size, 64, 64);
+// دالة إنشاء الكوكب (بشكل موحد وحركة واقعية)
+function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
+    // حجم موحد لجميع الكواكب
+    const size = 4; 
+    // دقة عالية جداً للكرة لضمان عدم تشوه الصورة
+    const geometry = new THREE.SphereGeometry(size, 64, 64); 
     
-    let material;
+    // استخدام اللون كخيار افتراضي في حال لم يتم تحميل الصورة
+    const material = new THREE.MeshStandardMaterial({ 
+        color: color,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+
+    // تحميل الصورة ولفها حول الكوكب بالكامل
     if (textureUrl) {
         const loader = new THREE.TextureLoader();
-        const texture = loader.load(textureUrl);
-        material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8, metalness: 0.1 });
-    } else {
-        material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.3, emissive: color, emissiveIntensity: 0.1 });
+        loader.load(textureUrl, (texture) => {
+            material.map = texture;
+            material.needsUpdate = true;
+        });
     }
 
     const mesh = new THREE.Mesh(geometry, material);
+    
+    // تخزين بيانات الجائزة في الكوكب
     mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
     
-    if (Math.random() > 0.5) {
-        const ring = new THREE.Mesh(
-            new THREE.RingGeometry(size * 1.4, size * 1.8, 32), 
-            new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
-        );
-        ring.rotation.x = Math.PI / 2 + 0.3;
-        mesh.add(ring);
-    }
     scene.add(mesh);
     planetsMeshes.push(mesh);
 }
 
-// انفجار
+// دالة الانفجار
 function create3DExplosion(position, color) {
     const particleCount = 200;
     const geometry = new THREE.BufferGeometry();
@@ -187,7 +189,7 @@ function create3DExplosion(position, color) {
     const velocities = [];
     for (let i = 0; i < particleCount; i++) {
         positions[i * 3] = position.x; positions[i * 3 + 1] = position.y; positions[i * 3 + 2] = position.z;
-        velocities.push(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(Math.random() * 0.8 + 0.2));
+        velocities.push(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(Math.random() * 1.5 + 0.5));
     }
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const particleSystem = new THREE.Points(geometry, new THREE.PointsMaterial({ color: color, size: 0.8, transparent: true, opacity: 1 }));
@@ -196,19 +198,25 @@ function create3DExplosion(position, color) {
     particles.push(particleSystem);
 }
 
-// حلقة الرسم
+// حلقة الرسم (لحركة الكواكب الواقعية)
 function animate() {
     requestAnimationFrame(animate);
     starField.rotation.y += 0.0005;
+    
     planetsMeshes.forEach(mesh => {
         if (!mesh.visible) return;
         const d = mesh.userData;
+        
+        // 1. الحركة المدارية (الدوران حول الشمس)
         d.angle += d.speed;
         mesh.position.x = Math.cos(d.angle) * d.orbitRadius;
-        mesh.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 10;
-        mesh.position.y = Math.sin(d.angle) * d.orbitRadius * 0.2;
-        mesh.rotation.y += 0.01;
+        mesh.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 20;
+        mesh.position.y = Math.sin(d.angle) * d.orbitRadius * 0.3;
+        
+        // 2. الدوران الذاتي (الكوكب يدور حول نفسه)
+        mesh.rotation.y += 0.005;
     });
+
     for (let i = particles.length - 1; i >= 0; i--) {
         const ps = particles[i];
         const pos = ps.geometry.attributes.position.array;
@@ -222,22 +230,32 @@ function animate() {
 }
 animate();
 
-// التفاعل (Raycaster)
+// ================================================================
+//   4. التفاعل والنقر
+// ================================================================
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 window.addEventListener('pointerdown', (event) => {
     if (!isPlaying) return;
+    
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
+    
     const intersects = raycaster.intersectObjects(planetsMeshes);
     if (intersects.length > 0) handlePlanetClick(intersects[0].object);
 });
 
 function handlePlanetClick(planet) {
+    // يسمح بمحاولة واحدة فقط: إيقاف اللعب فوراً
+    isPlaying = false; 
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('play-btn').textContent = "انتهت الجولة!";
+
     const prize = planet.userData.prize;
     
+    // إرسال النتيجة للخادم
     fetch(`${API_BASE}/api/planet/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -246,40 +264,42 @@ function handlePlanetClick(planet) {
     .then(r => r.json())
     .then(data => {
         if (data.matched) {
-            isPlaying = false;
-            planet.visible = false;
+            // ✅ فوز
+            planet.visible = false; // إخفاء الكوكب
             create3DExplosion(planet.position, prize.color);
-            
             soundExplosion.play();
             setTimeout(() => soundSuccess.play(), 600);
-            
             if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
-            
-            setTimeout(() => showModal(data.prize), 1200);
+            setTimeout(() => showModal(data.prize, true), 1200);
         } else {
+            // ❌ خسارة
+            planet.visible = false; // إخفاء الكوكب (لأنه انفجر)
+            create3DExplosion(planet.position, '#ff4444');
             soundError.play();
-            planet.material.emissiveIntensity = 1;
-            setTimeout(() => planet.material.emissiveIntensity = 0.1, 200);
             if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+            setTimeout(() => showModal(null, false), 1200);
         }
     });
 }
 
-// بدء اللعبة
+// ================================================================
+//   5. بدء اللعبة والتهيئة
+// ================================================================
 document.getElementById('play-btn').onclick = async () => {
     soundClick.play();
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
+    
     const res = await fetch(`${API_BASE}/api/planet/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: USER_ID })
     });
     const data = await res.json();
+    
     if (data.success) {
-        winningPrizeId = data.winning_prize_id;
         isPlaying = true;
-        document.getElementById('play-btn').textContent = "اضغط على الكوكب الصحيح!";
+        document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
         document.getElementById('status-text').textContent = "ابحث عن الكوكب...";
     } else {
         alert(data.error);
@@ -288,19 +308,22 @@ document.getElementById('play-btn').onclick = async () => {
     }
 };
 
-// التهيئة
 async function init() {
     try {
         const res = await fetch(`${API_BASE}/api/planet/data`);
         const data = await res.json();
+        
         if (data.success) {
+            // إنشاء الكواكب من بيانات الخادم
             data.prizes.forEach((p, index) => {
-                const orbitRadius = 10 + (index * 5);
-                createPlanet(p.color || '#3498db', p.texture_url, 2 + (index * 0.5), orbitRadius, 0.002 + (index * 0.001), p);
+                const orbitRadius = 12 + (index * 6); // مسافات واضحة بين المدارات
+                createPlanet(p.texture_url, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
             });
             
+            // التحقق من حالة اللعب (التبريد)
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
+            
             if (statusData.can_play) {
                 document.getElementById('play-btn').disabled = false;
                 document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
@@ -309,24 +332,29 @@ async function init() {
                 document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
             }
         }
-    } catch (e) {
-        console.error(e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-function showModal(prize) {
-    document.getElementById('m-icon').textContent = prize.icon || '💎';
-    document.getElementById('m-title').textContent = prize.name;
-    document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
+// ================================================================
+//   6. المودال ولوحة الإدارة
+// ================================================================
+function showModal(prize, isWin) {
+    if (isWin && prize) {
+        document.getElementById('m-icon').textContent = prize.icon || '💎';
+        document.getElementById('m-title').textContent = prize.name;
+        document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
+        document.getElementById('m-amount').style.color = '#00FF88';
+    } else {
+        document.getElementById('m-icon').textContent = '😅';
+        document.getElementById('m-title').textContent = 'حظ أوفر المرة القادمة';
+        document.getElementById('m-amount').textContent = '';
+    }
     document.getElementById('modal').classList.add('show');
-    document.getElementById('play-btn').disabled = true;
-    document.getElementById('play-btn').textContent = "لقد انهيت الجولة!";
+    document.getElementById('status-text').textContent = "عد غداً!";
 }
+
 document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('show');
 
-// ================================================================
-//   4. لوحة الإدارة
-// ================================================================
 async function loadAdminData() {
     try {
         const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
@@ -379,14 +407,13 @@ async function savePrize(id) {
     alert('✅ تم الحفظ');
 }
 
-// تعديل حجم الشاشة
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// بدء اللعبة
+// تشغيل
 init();
 </script>
 </body>
