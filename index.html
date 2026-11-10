@@ -12,6 +12,7 @@
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
     #canvas-container { position: absolute; inset: 0; z-index: 1; }
     
+    /* واجهة المستخدم */
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
     .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px #FFD700; }
@@ -25,6 +26,7 @@
     }
     .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
 
+    /* المودال */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
     .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; box-shadow: 0 0 60px rgba(255,215,0,0.4); }
@@ -35,6 +37,7 @@
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
+    /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
     .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
@@ -81,22 +84,27 @@
 
 <script>
 // ================================================================
-//   الإعدادات
+//   1. التحقق من المستخدم (يدعم الرابط وتليجرام)
 // ================================================================
-const API_BASE = 'https://jkl-ttvi.onrender.com';
+const API_BASE = 'https://jkl-ttvi.onrender.com'; // ضع رابط خادمك هنا
 const ADMIN_ID = "7011476249";
 
-// جلب الآيدي الحقيقي من تليجرام
-const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+// استخراج الآيدي من الرابط أولاً، ثم من تليجرام
+const urlParams = new URLSearchParams(window.location.search);
+let USER_ID = parseInt(urlParams.get('user_id')) || window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
-// إذا لم يكن هناك مستخدم، لا تفتح اللعبة
+// إذا لم يوجد آيدي، نوقف اللعبة
 if (!USER_ID) {
     document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:50px;'>⚠️ يرجى فتح اللعبة من داخل البوت.</h2>";
-    throw new Error("No Telegram User");
+    throw new Error("No User ID provided");
 }
 
-// إظهار لوحة الإدارة تلقائياً للأدمن
+// إظهار لوحة الإدارة تلقائياً إذا كان الآيدي يطابق الأدمن
 const isAdmin = String(USER_ID) === String(ADMIN_ID);
+if (isAdmin) {
+    document.getElementById('admin-panel').classList.add('show');
+    loadAdminData();
+}
 
 let winningPrizeId = null;
 let isPlaying = false;
@@ -104,7 +112,7 @@ let planetsMeshes = [];
 let particles = [];
 
 // ================================================================
-//   المؤثرات الصوتية الحقيقية (Howler.js)
+//   2. المؤثرات الصوتية (Howler.js)
 // ================================================================
 const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/impacts/wood_plank_flicks.ogg'], volume: 0.8 });
 const soundSuccess = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg'], volume: 1.0 });
@@ -112,7 +120,7 @@ const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/cli
 const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.6 });
 
 // ================================================================
-//   إعداد Three.js
+//   3. إعداد Three.js
 // ================================================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -123,6 +131,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+// الإضاءة
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
@@ -146,7 +155,6 @@ sun.add(new THREE.PointLight(0xFFD700, 2, 50));
 function createPlanet(color, textureUrl, size, orbitRadius, speed, prizeData) {
     const geometry = new THREE.SphereGeometry(size, 64, 64);
     
-    // استخدام الملمس (الصورة) إذا وجدت، وإلا استخدام اللون
     let material;
     if (textureUrl) {
         const loader = new THREE.TextureLoader();
@@ -159,7 +167,6 @@ function createPlanet(color, textureUrl, size, orbitRadius, speed, prizeData) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
     
-    // إضافة حلقة لبعض الكواكب
     if (Math.random() > 0.5) {
         const ring = new THREE.Mesh(
             new THREE.RingGeometry(size * 1.4, size * 1.8, 32), 
@@ -231,7 +238,6 @@ window.addEventListener('pointerdown', (event) => {
 function handlePlanetClick(planet) {
     const prize = planet.userData.prize;
     
-    // إرسال النقرة للخادم (تخزين حقيقي)
     fetch(`${API_BASE}/api/planet/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,29 +290,27 @@ document.getElementById('play-btn').onclick = async () => {
 
 // التهيئة
 async function init() {
-    const res = await fetch(`${API_BASE}/api/planet/data`);
-    const data = await res.json();
-    if (data.success) {
-        data.prizes.forEach((p, index) => {
-            const orbitRadius = 10 + (index * 5);
-            createPlanet(p.color || '#3498db', p.texture_url, 2 + (index * 0.5), orbitRadius, 0.002 + (index * 0.001), p);
-        });
-        
-        const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
-        const statusData = await statusRes.json();
-        if (statusData.can_play) {
-            document.getElementById('play-btn').disabled = false;
-            document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
-        } else {
-            document.getElementById('play-btn').disabled = true;
-            document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
+    try {
+        const res = await fetch(`${API_BASE}/api/planet/data`);
+        const data = await res.json();
+        if (data.success) {
+            data.prizes.forEach((p, index) => {
+                const orbitRadius = 10 + (index * 5);
+                createPlanet(p.color || '#3498db', p.texture_url, 2 + (index * 0.5), orbitRadius, 0.002 + (index * 0.001), p);
+            });
+            
+            const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
+            const statusData = await statusRes.json();
+            if (statusData.can_play) {
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
+            } else {
+                document.getElementById('play-btn').disabled = true;
+                document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
+            }
         }
-    }
-    
-    // إظهار لوحة الإدارة تلقائياً إذا كان المستخدم هو الأدمن
-    if (isAdmin) {
-        document.getElementById('admin-panel').classList.add('show');
-        loadAdminData();
+    } catch (e) {
+        console.error(e);
     }
 }
 
@@ -320,30 +324,34 @@ function showModal(prize) {
 }
 document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('show');
 
-// الإدارة
+// ================================================================
+//   4. لوحة الإدارة
+// ================================================================
 async function loadAdminData() {
-    const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
-    const settingsData = await settingsRes.json();
-    if (settingsData.success) document.getElementById('a-bg').value = settingsData.settings.bg_image_url || '';
+    try {
+        const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
+        const settingsData = await settingsRes.json();
+        if (settingsData.success) document.getElementById('a-bg').value = settingsData.settings.bg_image_url || '';
 
-    const prizesRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
-    const prizesData = await prizesRes.json();
-    if (prizesData.success) {
-        let html = '';
-        prizesData.prizes.forEach(p => {
-            html += `
-                <div class="prize-row">
-                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;" placeholder="الاسم">
-                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;" placeholder="المبلغ">
-                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;" placeholder="الاحتمال">
-                    <input type="color" value="${p.color}" id="p-color-${p.id}">
-                    <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;" placeholder="رابط الصورة">
-                    <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
-                </div>
-            `;
-        });
-        document.getElementById('admin-prizes').innerHTML = html;
-    }
+        const prizesRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
+        const prizesData = await prizesRes.json();
+        if (prizesData.success) {
+            let html = '';
+            prizesData.prizes.forEach(p => {
+                html += `
+                    <div class="prize-row">
+                        <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;" placeholder="الاسم">
+                        <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;" placeholder="المبلغ">
+                        <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;" placeholder="الاحتمال">
+                        <input type="color" value="${p.color}" id="p-color-${p.id}">
+                        <input type="text" value="${p.texture_url || ''}" id="p-tex-${p.id}" style="flex:2;" placeholder="رابط الصورة">
+                        <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
+                    </div>
+                `;
+            });
+            document.getElementById('admin-prizes').innerHTML = html;
+        }
+    } catch(e) { console.error(e); }
 }
 
 async function saveBg() {
@@ -353,7 +361,7 @@ async function saveBg() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val })
     });
-    alert('تم الحفظ');
+    alert('✅ تم الحفظ');
 }
 
 async function savePrize(id) {
@@ -368,15 +376,17 @@ async function savePrize(id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, texture_url: texture, is_active: true })
     });
-    alert('تم الحفظ');
+    alert('✅ تم الحفظ');
 }
 
+// تعديل حجم الشاشة
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// بدء اللعبة
 init();
 </script>
 </body>
