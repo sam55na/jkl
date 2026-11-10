@@ -229,7 +229,7 @@ app.get('/api/planet/status/:user_id', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// بدء اللعبة
+// بدء اللعبة (اختيار الجائزة الرابحة بدقة)
 app.post('/api/planet/start', async (req, res) => {
     const { user_id } = req.body;
     if (!dbReady) return res.status(503).json({ success: false, error: 'Database not ready' });
@@ -237,6 +237,7 @@ app.post('/api/planet/start', async (req, res) => {
         const isActive = await getSetting('is_active', 'true');
         if (isActive !== 'true') return res.status(403).json({ success: false, error: 'اللعبة معطلة حالياً' });
 
+        // التحقق من الإيداع
         const depositReq = await getSetting('deposit_required', 'false');
         if (depositReq === 'true') {
             const minAmount = parseFloat(await getSetting('deposit_min_amount', '1000'));
@@ -245,6 +246,7 @@ app.post('/api/planet/start', async (req, res) => {
             if (total < minAmount) return res.status(403).json({ success: false, error: 'يجب إكمال شرط الإيداع أولاً' });
         }
 
+        // التحقق من التبريد
         const interval = parseInt(await getSetting('spin_interval_hours', '24'));
         const lastGame = await pool.query(`SELECT game_date FROM planet_games WHERE user_id = $1 ORDER BY game_date DESC LIMIT 1`, [user_id]);
         if (lastGame.rows.length > 0) {
@@ -252,40 +254,61 @@ app.post('/api/planet/start', async (req, res) => {
             if (hoursDiff < interval) return res.status(429).json({ success: false, error: 'فترة التبريد لم تنته بعد' });
         }
 
+        // جلب الجوائز
         const prizes = await pool.query('SELECT * FROM planet_prizes WHERE is_active = true');
         if (prizes.rows.length === 0) return res.status(500).json({ success: false, error: 'لا توجد جوائز' });
 
+        // ✅ الحساب الدقيق للنسب (حل مشكلة حظ أوفر مع 100%)
         const totalProb = prizes.rows.reduce((s, p) => s + parseFloat(p.probability), 0);
-        let rand = Math.random() * totalProb;
-        let winningPrize = prizes.rows[0];
-        for (const p of prizes.rows) {
-            if (rand <= parseFloat(p.probability)) { winningPrize = p; break; }
-            rand -= parseFloat(p.probability);
+        
+        // إذا كان مجموع النسب أقل من 100، فإن الباقي يعتبر فرصة "حظ أوفر" (خسارة)
+        const loseChance = Math.max(0, 100 - totalProb);
+        const roll = Math.random() * 100; 
+
+        let winningPrize = null;
+
+        if (roll < loseChance) {
+            winningPrize = null; // خسارة
+        } else {
+            // فوز: عشوائي موزون دقيق
+            let rand = roll - loseChance;
+            let cumulative = 0;
+            for (const p of prizes.rows) {
+                cumulative += parseFloat(p.probability);
+                if (rand <= cumulative) { winningPrize = p; break; }
+            }
+            // احتياطي في حال الكسور العشرية
+            if (!winningPrize) winningPrize = prizes.rows[prizes.rows.length - 1];
         }
 
+        // حفظ الجلسة
         await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
-        await pool.query(`INSERT INTO planet_active_sessions (user_id, winning_prize_id) VALUES ($1, $2)`, [user_id, winningPrize.id]);
+        
+        if (winningPrize) {
+            await pool.query(`INSERT INTO planet_active_sessions (user_id, winning_prize_id) VALUES ($1, $2)`, [user_id, winningPrize.id]);
+            res.json({ success: true, winning_prize_id: winningPrize.id });
+        } else {
+            await pool.query(`INSERT INTO planet_active_sessions (user_id, winning_prize_id) VALUES ($1, $2)`, [user_id, 0]);
+            res.json({ success: true, winning_prize_id: 0 }); // 0 يعني خسارة
+        }
 
-        res.json({ success: true, winning_prize_id: winningPrize.id });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// النقر على الكوكب (تحديد الفوز أو الخسارة النهائية)
+// النقر على الكوكب
 app.post('/api/planet/click', async (req, res) => {
     const { user_id, prize_id } = req.body;
     try {
-        // 1. جلب الجلسة النشطة
         const session = await pool.query(`SELECT winning_prize_id FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
         if (session.rows.length === 0) return res.status(400).json({ success: false, error: 'لا توجد جلسة نشطة' });
         
         const realWinningId = session.rows[0].winning_prize_id;
-        const isWin = (prize_id === realWinningId);
+        const isWin = (realWinningId !== 0 && prize_id === realWinningId);
 
-        // 2. جلب بيانات الجائزة (إن فاز)
         const clickedPrize = await pool.query('SELECT * FROM planet_prizes WHERE id = $1', [prize_id]);
         const p = clickedPrize.rows[0];
 
-        // 3. تسجيل النتيجة في قاعدة البيانات
+        // تسجيل النتيجة
         await pool.query(`
             INSERT INTO planet_games (user_id, status, prize_id, prize_name, prize_amount, is_rewarded)
             VALUES ($1, $2, $3, $4, $5, $6)
@@ -295,13 +318,12 @@ app.post('/api/planet/click', async (req, res) => {
             isWin ? p.id : null, 
             isWin ? p.name : 'حظ أوفر', 
             isWin ? p.amount : 0, 
-            isWin ? false : true // الخسارة لا تحتاج تدقيق (تمت معالجتها)
+            isWin ? false : true 
         ]);
 
-        // 4. حذف الجلسة
+        // حذف الجلسة
         await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
 
-        // 5. إرسال النتيجة للواجهة
         if (isWin) {
             res.json({ success: true, matched: true, prize: { name: p.name, amount: parseFloat(p.amount), icon: p.icon } });
         } else {
