@@ -54,15 +54,46 @@
     .cooldown-timer { color: #00FF88; font-size: 36px; font-weight: 900; text-shadow: 0 0 20px rgba(0,255,136,0.5); }
     .cooldown-sub { color: #888; font-size: 14px; margin-top: 10px; }
 
-    /* المودال */
+    /* مودال الجائزة (النتيجة) */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
-    .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; }
+    .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; box-shadow: 0 0 60px rgba(255,215,0,0.4); max-width: 85%; }
     #modal.show .card { transform: scale(1); }
-    .card-icon { font-size: 80px; margin-bottom: 10px; }
+    .card-icon { font-size: 80px; margin-bottom: 10px; animation: float 2s infinite; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
     .card-title { color: #FFD700; font-size: 24px; font-weight: bold; margin-bottom: 10px; }
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
+
+    /* ✅ مودال إشعار الإيداع (جديد وأنيق) */
+    #deposit-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 150; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
+    #deposit-modal.show { opacity: 1; pointer-events: auto; }
+    .deposit-card { 
+        background: linear-gradient(135deg, #1a1a2e, #0f3460); 
+        border: 2px solid #FF4444; border-radius: 24px; padding: 35px 25px; 
+        text-align: center; transform: scale(0.8); transition: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        box-shadow: 0 0 60px rgba(255, 68, 68, 0.3); max-width: 85%; width: 320px;
+    }
+    #deposit-modal.show .deposit-card { transform: scale(1); }
+    .deposit-icon { font-size: 60px; margin-bottom: 15px; animation: shake 0.5s infinite; }
+    @keyframes shake {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-10deg); }
+        75% { transform: rotate(10deg); }
+    }
+    .deposit-title { color: #FFD700; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+    .deposit-text { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+    .deposit-text strong { color: #00FF88; font-size: 18px; }
+    .deposit-info { 
+        background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); 
+        padding: 12px; border-radius: 12px; margin-bottom: 20px; 
+    }
+    .deposit-info .label { color: #888; font-size: 12px; margin-bottom: 4px; }
+    .deposit-info .value { color: #FF4444; font-size: 20px; font-weight: bold; }
+    .btn-deposit-close { 
+        background: #FFD700; color: #000; border: none; padding: 12px 40px; 
+        border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%; 
+    }
 
     /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
@@ -96,12 +127,10 @@
 <div id="canvas-container"></div>
 
 <div id="ui-layer">
-    <!-- زر البدء في المنتصف -->
     <div class="center-btn-container" id="start-container">
         <button class="btn-play" id="play-btn" disabled>انتظر...</button>
     </div>
 
-    <!-- مؤقت الانتظار (يظهر عند التبريد) -->
     <div class="cooldown-container" id="cooldown-container">
         <div class="cooldown-title">⏳ فترة الانتظار</div>
         <div class="cooldown-timer" id="cooldown-timer">00:00:00</div>
@@ -109,6 +138,7 @@
     </div>
 </div>
 
+<!-- مودال الجائزة -->
 <div id="modal">
     <div class="card">
         <div class="card-icon" id="m-icon">💎</div>
@@ -118,7 +148,27 @@
     </div>
 </div>
 
-<!-- لوحة الإدارة -->
+<!-- ✅ مودال الإيداع الجديد -->
+<div id="deposit-modal">
+    <div class="deposit-card">
+        <div class="deposit-icon">🚫</div>
+        <div class="deposit-title">شرط الإيداع مطلوب</div>
+        <div class="deposit-text">
+            عذراً، لا يمكنك اللعب حالياً.<br>
+            يجب عليك إيداع مبلغ في البوت أولاً.
+        </div>
+        <div class="deposit-info">
+            <div class="label">المبلغ المطلوب</div>
+            <div class="value" id="d-min">0 SYP</div>
+        </div>
+        <div class="deposit-info" style="background: rgba(0,255,136,0.05); border-color: rgba(0,255,136,0.2);">
+            <div class="label">رصيدك الحالي</div>
+            <div class="value" style="color: #00FF88;" id="d-current">0 SYP</div>
+        </div>
+        <button class="btn-deposit-close" onclick="document.getElementById('deposit-modal').classList.remove('show')">حسناً</button>
+    </div>
+</div>
+
 <div id="admin-panel">
     <h2 class="admin-header">⚙️ لوحة الإدارة</h2>
     
@@ -188,34 +238,29 @@ let isPlaying = false, planetsMeshes = [], particles = [], currentSettings = {},
 let cooldownInterval = null;
 
 // ================================================================
-//   الموسيقى والأصوات
+//   الصوتيات (تم إصلاح صوت الانفجار)
 // ================================================================
-// موسيقى خلفية حقيقية
 const backgroundMusic = new Howl({ 
     src: ['https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'], 
-    loop: true, 
-    volume: 0.2 
+    loop: true, volume: 0.15 
 });
 
-// صوت انفجار
+// ✅ صوت انفجار حقيقي وقوي مضمون العمل
 const soundExplosion = new Howl({ 
-    src: ['https://actions.google.com/sounds/v1/explosions/deep_explosion.ogg'], 
-    volume: 1.0 
+    src: ['https://cdn.pixabay.com/download/audio/2022/03/15/audio_2e5c6f3e3f.mp3?filename=explosion-01-85372.mp3'],
+    volume: 1.0
 });
 
-// صوت النجاح
 const soundSuccess = new Howl({ 
     src: ['https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg'], 
     volume: 0.8 
 });
 
-// صوت النقر
 const soundClick = new Howl({ 
     src: ['https://actions.google.com/sounds/v1/ui/click.ogg'], 
     volume: 0.4 
 });
 
-// صوت الخطأ
 const soundError = new Howl({ 
     src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], 
     volume: 0.5 
@@ -234,13 +279,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// إضاءة
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(10, 20, 15);
 scene.add(dirLight);
 
-// النجوم
 const starGeo = new THREE.BufferGeometry();
 const starPos = new Float32Array(4000 * 3);
 for (let i = 0; i < 4000 * 3; i++) starPos[i] = (Math.random() - 0.5) * 400;
@@ -248,7 +291,7 @@ starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
 scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
 
 // ================================================================
-//   دوال إنشاء الكواكب والانفجارات
+//   دوال الإنشاء
 // ================================================================
 function clearPlanets() {
     planetsMeshes.forEach(m => scene.remove(m));
@@ -262,11 +305,7 @@ function createOrbitLine(radius) {
     const segments = 128;
     for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
-        points.push(new THREE.Vector3(
-            Math.cos(angle) * radius,
-            0,
-            Math.sin(angle) * radius
-        ));
+        points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
     }
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.1 });
@@ -291,51 +330,33 @@ function createPlanet(textureUrl, color, orbitRadius, speed, prizeData, startAng
     }
     
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.userData = { 
-        prize: prizeData, 
-        orbitRadius: orbitRadius, 
-        speed: speed, 
-        angle: startAngle 
-    };
+    mesh.userData = { prize: prizeData, orbitRadius, speed, angle: startAngle };
     mesh.rotation.x = 0.2;
     scene.add(mesh);
     planetsMeshes.push(mesh);
 }
 
-// ✅ تأثير الانفجار (نيازك مشتعلة)
 function create3DExplosion(position, color) {
-    const count = 300; // زيادة عدد الجسيمات لتبدو كنيازك
+    const count = 300;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
     const velocities = [];
     const colors = [];
     
     const baseColor = new THREE.Color(color);
-    const fireColor1 = new THREE.Color('#FF4500'); // برتقالي محترق
-    const fireColor2 = new THREE.Color('#FFD700'); // ذهبي
+    const fireColor1 = new THREE.Color('#FF4500');
+    const fireColor2 = new THREE.Color('#FFD700');
 
     for (let i = 0; i < count; i++) {
         positions[i * 3] = position.x;
         positions[i * 3 + 1] = position.y;
         positions[i * 3 + 2] = position.z;
         
-        const dir = new THREE.Vector3(
-            Math.random() - 0.5,
-            Math.random() - 0.5,
-            Math.random() - 0.5
-        ).normalize();
+        const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+        velocities.push(dir.multiplyScalar(Math.random() * 2.5 + 0.5));
         
-        // سرعات متفاوتة
-        const speed = Math.random() * 2.5 + 0.5;
-        velocities.push(dir.multiplyScalar(speed));
-        
-        // ألوان النار
         const rand = Math.random();
-        let particleColor;
-        if (rand < 0.4) particleColor = fireColor1;
-        else if (rand < 0.8) particleColor = fireColor2;
-        else particleColor = baseColor;
-        
+        let particleColor = rand < 0.4 ? fireColor1 : (rand < 0.8 ? fireColor2 : baseColor);
         colors.push(particleColor.r, particleColor.g, particleColor.b);
     }
     
@@ -343,24 +364,19 @@ function create3DExplosion(position, color) {
     geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
     
     const material = new THREE.PointsMaterial({ 
-        size: 1.2, 
-        vertexColors: true, 
-        transparent: true, 
-        opacity: 1,
-        blending: THREE.AdditiveBlending // تأثير التوهج
+        size: 1.2, vertexColors: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending
     });
     
-    const particleSystem = new THREE.Points(geometry, material);
-    particleSystem.userData = { velocities: velocities, life: 1 };
-    scene.add(particleSystem);
-    particles.push(particleSystem);
+    const ps = new THREE.Points(geometry, material);
+    ps.userData = { velocities, life: 1 };
+    scene.add(ps);
+    particles.push(ps);
 }
 
 // ================================================================
 //   حلقة الرسم
 // ================================================================
 let clock = new THREE.Clock();
-
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
@@ -368,33 +384,21 @@ function animate() {
     planetsMeshes.forEach(m => {
         if (!m.visible) return;
         const d = m.userData;
-        
-        // حركة منتظمة
         d.angle += d.speed * delta * 60;
-        
         m.position.x = Math.cos(d.angle) * d.orbitRadius;
         m.position.z = Math.sin(d.angle) * d.orbitRadius;
-        m.position.y = 0;
-        
         m.rotation.y += 0.01;
     });
 
-    // الجسيمات (النيازك)
     for (let i = particles.length - 1; i >= 0; i--) {
         const ps = particles[i], pos = ps.geometry.attributes.position.array;
         ps.userData.velocities.forEach((v, j) => { 
-            pos[j * 3] += v.x; 
-            pos[j * 3 + 1] += v.y; 
-            pos[j * 3 + 2] += v.z; 
+            pos[j * 3] += v.x; pos[j * 3 + 1] += v.y; pos[j * 3 + 2] += v.z; 
         });
         ps.geometry.attributes.position.needsUpdate = true;
         ps.material.opacity -= 0.01;
         ps.userData.life -= 0.01;
-        
-        if (ps.userData.life <= 0) { 
-            scene.remove(ps); 
-            particles.splice(i, 1); 
-        }
+        if (ps.userData.life <= 0) { scene.remove(ps); particles.splice(i, 1); }
     }
     renderer.render(scene, camera);
 }
@@ -415,7 +419,7 @@ window.addEventListener('pointerdown', (e) => {
 
 function handlePlanetClick(planet) {
     isPlaying = false;
-    backgroundMusic.stop(); // إيقاف الموسيقى
+    backgroundMusic.stop();
     document.getElementById('play-btn').style.display = 'none';
     document.getElementById('start-container').style.display = 'none';
 
@@ -428,9 +432,8 @@ function handlePlanetClick(planet) {
     }).then(r => r.json()).then(data => {
         if (data.success) {
             planet.visible = false;
-            // انفجار مع ألوان
             create3DExplosion(planet.position, clickedPrize.color);
-            soundExplosion.play();
+            soundExplosion.play(); // ✅ صوت الانفجار
             
             setTimeout(() => {
                 if (data.matched) {
@@ -440,8 +443,7 @@ function handlePlanetClick(planet) {
                     soundError.play();
                     showModal(null);
                 }
-                // بدء مؤقت الانتظار
-                startCooldown(24 * 3600); // 24 ساعة بالثواني
+                startCooldown(24 * 3600);
             }, 1000);
         } else {
             alert(data.error || 'خطأ');
@@ -459,22 +461,15 @@ async function loadGame() {
         
         if (data.success) {
             clearPlanets();
-            
             const numRings = Math.ceil(data.prizes.length / 4);
-            
-            for (let r = 0; r < numRings; r++) {
-                const radius = 18 + (r * 12);
-                createOrbitLine(radius);
-            }
+            for (let r = 0; r < numRings; r++) createOrbitLine(18 + (r * 12));
 
             data.prizes.forEach((p, index) => {
                 const ringIndex = Math.floor(index / 4);
                 const positionInRing = index % 4;
-                
                 const orbitRadius = 18 + (ringIndex * 12);
                 const startAngle = (positionInRing * Math.PI / 2) + (ringIndex * 0.3);
                 const speed = 0.004 - (ringIndex * 0.0005);
-                
                 createPlanet(p.texture_url, p.color, orbitRadius, speed, p, startAngle);
             });
 
@@ -508,7 +503,6 @@ function startCooldown(seconds) {
     document.getElementById('start-container').style.display = 'none';
 
     if (cooldownInterval) clearInterval(cooldownInterval);
-
     let remaining = seconds;
     
     function updateTimer() {
@@ -522,15 +516,12 @@ function startCooldown(seconds) {
             btn.textContent = "🚀 اختر كوكباً لتفجيره!";
             return;
         }
-        
         const h = Math.floor(remaining / 3600);
         const m = Math.floor((remaining % 3600) / 60);
         const s = remaining % 60;
-        
         timer.textContent = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         remaining--;
     }
-    
     updateTimer();
     cooldownInterval = setInterval(updateTimer, 1000);
 }
@@ -571,10 +562,13 @@ document.getElementById('play-btn').onclick = async () => {
     if (data.success) {
         isPlaying = true;
         document.getElementById('start-container').style.display = 'none';
-        backgroundMusic.play(); // بدء الموسيقى
+        backgroundMusic.play();
     } else {
+        // ✅ عرض مودال الإيداع الجديد
         if (data.deposit_required) {
-            alert(`يجب إيداع ${data.min_deposit} SYP أولاً. رصيدك الحالي: ${data.current_deposits} SYP`);
+            document.getElementById('d-min').textContent = `${data.min_deposit} SYP`;
+            document.getElementById('d-current').textContent = `${data.current_deposits} SYP`;
+            document.getElementById('deposit-modal').classList.add('show');
         } else {
             alert(data.error);
         }
@@ -626,15 +620,9 @@ async function loadAdminData() {
             document.getElementById('a-bg').value = currentSettings.bg_image_url || '';
             document.getElementById('a-loading').value = currentSettings.loading_image_url || '';
             
-            if (currentSettings.deposit_required) {
-                document.getElementById('a-deposit-req').value = currentSettings.deposit_required;
-            }
-            if (currentSettings.deposit_min_amount) {
-                document.getElementById('a-deposit-min').value = currentSettings.deposit_min_amount;
-            }
-            if (currentSettings.deposit_check_hours) {
-                document.getElementById('a-deposit-hours').value = currentSettings.deposit_check_hours;
-            }
+            if (currentSettings.deposit_required) document.getElementById('a-deposit-req').value = currentSettings.deposit_required;
+            if (currentSettings.deposit_min_amount) document.getElementById('a-deposit-min').value = currentSettings.deposit_min_amount;
+            if (currentSettings.deposit_check_hours) document.getElementById('a-deposit-hours').value = currentSettings.deposit_check_hours;
         }
         
         const pRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
