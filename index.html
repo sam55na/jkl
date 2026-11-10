@@ -11,6 +11,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: sans-serif; color: #fff; }
 
+    /* شاشة التحميل */
     #loading-screen { position: fixed; inset: 0; background: #0a0a0a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
     #loading-screen .loading-image { width: 70vw; max-width: 280px; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,215,0,0.08); box-shadow: 0 0 80px rgba(255,215,0,0.04); animation: pulse 2s infinite; margin-bottom: 28px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
@@ -19,6 +20,7 @@
     .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #FFD700, #FF8C00); border-radius: 4px; transition: width 0.3s; }
     .progress-text { color: #888; font-size: 14px; margin-top: 12px; text-align: center; font-weight: 600; letter-spacing: 1px; }
 
+    /* واجهة اللعب */
     #canvas-container { position: absolute; inset: 0; z-index: 1; }
     #ui-layer { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
     .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
@@ -27,6 +29,7 @@
     .btn-play { background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 40px; padding: 16px 40px; font-size: 18px; font-weight: 900; cursor: pointer; width: 100%; max-width: 300px; }
     .btn-play:disabled { background: #333; color: #777; cursor: not-allowed; }
 
+    /* المودال */
     #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
     .card { background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; padding: 40px; text-align: center; transform: scale(0.8); transition: 0.4s; }
@@ -36,6 +39,7 @@
     .card-amount { font-size: 40px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
     .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
 
+    /* لوحة الإدارة */
     #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
     .admin-header { color: #FFD700; margin-bottom: 20px; text-align: center; font-size: 20px; font-weight: bold; }
@@ -103,8 +107,12 @@
 </div>
 
 <script>
-const API_BASE = 'https://jkl-ttvi.onrender.com';
+// ================================================================
+//   الإعدادات الأساسية والتحقق
+// ================================================================
+const API_BASE = 'https://jkl-ttvi.onrender.com'; // ⚠️ ضع رابط خادمك هنا
 const ADMIN_ID = "7011476249";
+
 const urlParams = new URLSearchParams(window.location.search);
 let USER_ID = parseInt(urlParams.get('user_id')) || window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
@@ -116,41 +124,76 @@ if (!USER_ID) {
 const isAdmin = String(USER_ID) === String(ADMIN_ID);
 if (isAdmin) document.getElementById('admin-panel').classList.add('show');
 
-let isPlaying = false, planetsMeshes = [], particles = [], currentSettings = {};
+let isPlaying = false, planetsMeshes = [], particles = [], currentSettings = {}, orbitLines = [];
 
+// ================================================================
+//   الصوتيات
+// ================================================================
 const soundAmbient = new Howl({ src: ['https://actions.google.com/sounds/v1/ambiences/deep_space_ambience.ogg'], loop: true, volume: 0.3 });
 const soundExplosion = new Howl({ src: ['https://actions.google.com/sounds/v1/explosions/deep_explosion.ogg'], volume: 0.9 });
 const soundSuccess = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg'], volume: 0.8 });
 const soundClick = new Howl({ src: ['https://actions.google.com/sounds/v1/ui/click.ogg'], volume: 0.4 });
+const soundError = new Howl({ src: ['https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'], volume: 0.5 });
 
+// ================================================================
+//   Three.js
+// ================================================================
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 80;
+camera.position.set(0, 30, 90);
+camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.position.set(1, 1, 1);
+// إضاءة
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(10, 20, 15);
 scene.add(dirLight);
 
+// النجوم
 const starGeo = new THREE.BufferGeometry();
-const starPos = new Float32Array(3000 * 3);
-for (let i = 0; i < 3000 * 3; i++) starPos[i] = (Math.random() - 0.5) * 300;
+const starPos = new Float32Array(4000 * 3);
+for (let i = 0; i < 4000 * 3; i++) starPos[i] = (Math.random() - 0.5) * 400;
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
 scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.2 })));
 
+// ================================================================
+//   دوال مساعدة
+// ================================================================
 function clearPlanets() {
     planetsMeshes.forEach(m => scene.remove(m));
     planetsMeshes = [];
+    orbitLines.forEach(line => scene.remove(line));
+    orbitLines = [];
 }
 
-function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
-    const geo = new THREE.SphereGeometry(5, 128, 128);
-    let mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9, metalness: 0.1 });
+function createOrbitLine(radius) {
+    const points = [];
+    const segments = 128;
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        // إحداثيات دائرية أفقية (مسطحة قليلاً)
+        points.push(new THREE.Vector3(
+            Math.cos(angle) * radius,
+            0,
+            Math.sin(angle) * radius
+        ));
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.1 });
+    const line = new THREE.Line(geometry, material);
+    scene.add(line);
+    orbitLines.push(line);
+}
+
+function createPlanet(textureUrl, color, orbitRadius, speed, prizeData, startAngle) {
+    // حجم الكوكب ثابت ومناسب
+    const geo = new THREE.SphereGeometry(4, 64, 64); 
+    let mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.8, metalness: 0.2 });
     
     if (textureUrl) {
         new THREE.TextureLoader().load(textureUrl, (tex) => {
@@ -164,7 +207,18 @@ function createPlanet(textureUrl, color, orbitRadius, speed, prizeData) {
     }
     
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.userData = { prize: prizeData, orbitRadius, speed, angle: Math.random() * Math.PI * 2 };
+    
+    // ✅ إعدادات المدار الجديد (الدوران في مستوى XZ)
+    mesh.userData = { 
+        prize: prizeData, 
+        orbitRadius: orbitRadius, 
+        speed: speed, 
+        angle: startAngle // الزاوية الابتدائية
+    };
+    
+    // إضافة ميل بسيط للكوكب
+    mesh.rotation.x = 0.2;
+    
     scene.add(mesh);
     planetsMeshes.push(mesh);
 }
@@ -182,17 +236,29 @@ function create3DExplosion(position, color) {
     particles.push(ps);
 }
 
+// ================================================================
+//   حلقة الرسم
+// ================================================================
 function animate() {
     requestAnimationFrame(animate);
+    
     planetsMeshes.forEach(m => {
         if (!m.visible) return;
         const d = m.userData;
+        
+        // تحديث الزاوية
         d.angle += d.speed;
+        
+        // ✅ الحركة الدائرية المسطحة (في محور XZ)
         m.position.x = Math.cos(d.angle) * d.orbitRadius;
-        m.position.z = Math.sin(d.angle) * d.orbitRadius * 0.5 - 20;
-        m.position.y = Math.sin(d.angle) * d.orbitRadius * 0.3;
-        m.rotation.y += 0.003;
+        m.position.z = Math.sin(d.angle) * d.orbitRadius;
+        m.position.y = 0;
+        
+        // دوران الكوكب حول نفسه
+        m.rotation.y += 0.005;
     });
+
+    // الجسيمات
     for (let i = particles.length - 1; i >= 0; i--) {
         const ps = particles[i], pos = ps.geometry.attributes.position.array;
         ps.userData.velocities.forEach((v, j) => { pos[j * 3] += v.x; pos[j * 3 + 1] += v.y; pos[j * 3 + 2] += v.z; });
@@ -205,6 +271,9 @@ function animate() {
 }
 animate();
 
+// ================================================================
+//   التفاعل
+// ================================================================
 const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
 window.addEventListener('pointerdown', (e) => {
     if (!isPlaying) return;
@@ -223,64 +292,72 @@ function handlePlanetClick(planet) {
 
     const clickedPrize = planet.userData.prize;
     
-    // إرسال النقرة للخادم ليحدد الجائزة
     fetch(`${API_BASE}/api/planet/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: USER_ID, prize_id: clickedPrize.id })
     }).then(r => r.json()).then(data => {
         if (data.success) {
-            // إخفاء الكوكب الذي تم النقر عليه
             planet.visible = false;
             create3DExplosion(planet.position, clickedPrize.color);
             soundExplosion.play();
             
             setTimeout(() => {
-                soundSuccess.play();
-                showModal(data.prize);
+                if (data.matched) {
+                    soundSuccess.play();
+                    showModal(data.prize);
+                } else {
+                    soundError.play();
+                    showModal(null); // عرض حظ أوفر
+                }
             }, 800);
         } else {
-            alert(data.error || 'خطأ في اللعبة');
+            alert(data.error || 'خطأ');
         }
     });
 }
 
-document.getElementById('play-btn').onclick = async () => {
-    soundClick.play();
-    document.getElementById('play-btn').disabled = true;
-    document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
-    
-    const res = await fetch(`${API_BASE}/api/planet/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-        isPlaying = true;
-        soundAmbient.play();
-        document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
-    } else {
-        alert(data.error);
-        document.getElementById('play-btn').disabled = false;
-        document.getElementById('play-btn').textContent = "حاول مجدداً";
-    }
-};
-
+// ================================================================
+//   التحميل
+// ================================================================
 async function loadGame() {
     try {
         const res = await fetch(`${API_BASE}/api/planet/data`);
         const data = await res.json();
+        
         if (data.success) {
             clearPlanets();
+            
+            // ✅ توزيع الكواكب على حلقات متداخلة (كل 4 كواكب في حلقة)
+            const numRings = Math.ceil(data.prizes.length / 4);
+            
+            // إنشاء خطوط المدارات أولاً
+            for (let r = 0; r < numRings; r++) {
+                const radius = 18 + (r * 12); // المسافة بين الحلقات
+                createOrbitLine(radius);
+            }
+
             data.prizes.forEach((p, index) => {
-                const orbitRadius = 12 + (index * 6);
-                createPlanet(p.texture_url, p.color, orbitRadius, 0.002 + (index * 0.0005), p);
+                const ringIndex = Math.floor(index / 4); // رقم الحلقة
+                const positionInRing = index % 4; // رقم الكوكب داخل الحلقة (0-3)
+                
+                const orbitRadius = 18 + (ringIndex * 12);
+                
+                // ✅ توزيع الزوايا بشكل متناسق (90 درجة بين كل كوكب)
+                // نضيف إزاحة بسيطة للحلقة لتبدو طبيعية
+                const startAngle = (positionInRing * Math.PI / 2) + (ringIndex * 0.3);
+                
+                // سرعة الحلقة (الحلقات الخارجية أبطأ)
+                const speed = 0.004 - (ringIndex * 0.0005);
+                
+                createPlanet(p.texture_url, p.color, orbitRadius, speed, p, startAngle);
             });
+
+            // الخلفية
             if (data.background) document.body.style.backgroundImage = `url('${data.background}')`;
             if (data.loading_image) document.getElementById('loadingImage').src = data.loading_image;
             
+            // حالة المستخدم
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
             if (statusData.can_play) {
@@ -312,15 +389,50 @@ async function init() {
     }, 500);
 }
 
+// ================================================================
+//   بدء اللعب وعرض النتيجة
+// ================================================================
+document.getElementById('play-btn').onclick = async () => {
+    soundClick.play();
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
+    
+    const res = await fetch(`${API_BASE}/api/planet/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        isPlaying = true;
+        soundAmbient.play();
+        document.getElementById('play-btn').textContent = "اضغط على كوكب (فرصة واحدة!)";
+    } else {
+        alert(data.error);
+        document.getElementById('play-btn').disabled = false;
+        document.getElementById('play-btn').textContent = "حاول مجدداً";
+    }
+};
+
 function showModal(prize) {
-    document.getElementById('m-icon').textContent = prize.icon || '💎';
-    document.getElementById('m-title').textContent = prize.name;
-    document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
-    document.getElementById('m-amount').style.color = '#00FF88';
+    if (prize) {
+        document.getElementById('m-icon').textContent = prize.icon || '💎';
+        document.getElementById('m-title').textContent = prize.name;
+        document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
+        document.getElementById('m-amount').style.color = '#00FF88';
+    } else {
+        document.getElementById('m-icon').textContent = '😅';
+        document.getElementById('m-title').textContent = 'حظ أوفر المرة القادمة';
+        document.getElementById('m-amount').textContent = '';
+    }
     document.getElementById('modal').classList.add('show');
 }
 document.getElementById('m-close').onclick = () => document.getElementById('modal').classList.remove('show');
 
+// ================================================================
+//   لوحة الإدارة
+// ================================================================
 async function saveSetting(key, value) {
     try {
         const res = await fetch(`${API_BASE}/api/planet/admin/setting`, {
