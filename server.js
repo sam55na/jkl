@@ -126,7 +126,6 @@ app.get('/api/planet/status/:user_id', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// ✅ بدء اللعبة (التحقق من الشروط فقط، دون تحديد الجائزة)
 app.post('/api/planet/start', async (req, res) => {
     const { user_id } = req.body;
     if (!dbReady) return res.status(503).json({ success: false, error: 'Database not ready' });
@@ -147,7 +146,6 @@ app.post('/api/planet/start', async (req, res) => {
             if (hoursDiff < interval) return res.status(429).json({ success: false, error: 'فترة التبريد لم تنته' });
         }
 
-        // إنشاء جلسة جديدة
         await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
         await pool.query(`INSERT INTO planet_active_sessions (user_id) VALUES ($1)`, [user_id]);
 
@@ -155,38 +153,36 @@ app.post('/api/planet/start', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// ✅ النقر على الكوكب (تحديد الجائزة بناءً على النسب)
+// ✅ النقر: الخادم يختار الجائزة بناءً على النسب
 app.post('/api/planet/click', async (req, res) => {
     const { user_id, prize_id } = req.body;
     try {
         const session = await pool.query(`SELECT user_id FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
         if (session.rows.length === 0) return res.status(400).json({ success: false, error: 'لا توجد جلسة نشطة' });
 
-        // جلب الجوائز النشطة
         const prizes = await pool.query('SELECT * FROM planet_prizes WHERE is_active = true');
-        if (prizes.rows.length === 0) return res.status(500).json({ success: false, error: 'لا توجد جوائز' });
+        if (prizes.rows.length === 0) return res.status(500).json({ success: false, error: 'لا توجد جوائز متاحة' });
 
-        // ✅ اختيار الجائزة بناءً على النسب (مضمون 100%)
         const totalProb = prizes.rows.reduce((s, p) => s + parseFloat(p.probability), 0);
+        if (totalProb <= 0) return res.status(500).json({ success: false, error: 'مجموع نسب الجوائز صفر' });
+
         const roll = Math.random() * totalProb;
         let cumulative = 0;
-        let winningPrize = prizes.rows[0];
+        let winningPrize = prizes.rows[prizes.rows.length - 1]; // احتياطي
         
         for (const p of prizes.rows) {
             cumulative += parseFloat(p.probability);
             if (roll < cumulative) { winningPrize = p; break; }
         }
 
-        // تسجيل النتيجة
+        // تسجيل الفوز
         await pool.query(`
             INSERT INTO planet_games (user_id, status, prize_id, prize_name, prize_amount, is_rewarded)
             VALUES ($1, 'won', $2, $3, $4, FALSE)
         `, [user_id, winningPrize.id, winningPrize.name, winningPrize.amount]);
 
-        // حذف الجلسة
         await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
 
-        // إرسال الجائزة للواجهة
         res.json({ 
             success: true, 
             prize: {
@@ -230,9 +226,7 @@ app.post('/api/planet/admin/prizes', checkAdmin, async (req, res) => {
 app.put('/api/planet/admin/prizes/:id', checkAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, amount, probability, color, texture_url } = req.body;
-    await pool.query(`
-        UPDATE planet_prizes SET name=$1, amount=$2, probability=$3, color=$4, texture_url=$5 WHERE id=$6
-    `, [name, amount, probability, color, texture_url, id]);
+    await pool.query(`UPDATE planet_prizes SET name=$1, amount=$2, probability=$3, color=$4, texture_url=$5 WHERE id=$6`, [name, amount, probability, color, texture_url, id]);
     res.json({ success: true });
 });
 
