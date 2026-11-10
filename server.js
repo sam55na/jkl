@@ -13,15 +13,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) { console.error('❌ DATABASE_URL missing'); process.exit(1); }
-
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const ADMIN_ID = 7011476249;
 let dbReady = false;
 
-// ================================================================
-//   الجداول
-// ================================================================
 const TABLE_SCHEMAS = {
     planet_prizes: `CREATE TABLE IF NOT EXISTS planet_prizes (id SERIAL PRIMARY KEY, name VARCHAR(255), amount DECIMAL(20,2) DEFAULT 0, icon VARCHAR(50), color VARCHAR(50), texture_url TEXT, size INTEGER, probability DECIMAL(5,2) DEFAULT 0, is_active BOOLEAN DEFAULT TRUE)`,
     planet_games: `CREATE TABLE IF NOT EXISTS planet_games (id SERIAL PRIMARY KEY, user_id BIGINT, status VARCHAR(20), prize_id INTEGER, prize_name VARCHAR(255), prize_amount DECIMAL(20,2), game_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_rewarded BOOLEAN DEFAULT FALSE)`,
@@ -153,7 +148,7 @@ app.post('/api/planet/start', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// ✅ النقر: الخادم يختار الجائزة بناءً على النسب
+// ✅ الخوارزمية المطابقة للبطاقات (المنطق الرياضي الدقيق)
 app.post('/api/planet/click', async (req, res) => {
     const { user_id, prize_id } = req.body;
     try {
@@ -163,73 +158,93 @@ app.post('/api/planet/click', async (req, res) => {
         const prizes = await pool.query('SELECT * FROM planet_prizes WHERE is_active = true');
         if (prizes.rows.length === 0) return res.status(500).json({ success: false, error: 'لا توجد جوائز متاحة' });
 
+        // 1. حساب مجموع النسب
         const totalProb = prizes.rows.reduce((s, p) => s + parseFloat(p.probability), 0);
-        if (totalProb <= 0) return res.status(500).json({ success: false, error: 'مجموع نسب الجوائز صفر' });
-
-        const roll = Math.random() * totalProb;
-        let cumulative = 0;
-        let winningPrize = prizes.rows[prizes.rows.length - 1]; // احتياطي
         
-        for (const p of prizes.rows) {
-            cumulative += parseFloat(p.probability);
-            if (roll < cumulative) { winningPrize = p; break; }
+        // 2. حساب نسبة "حظ أوفر" (الفرق بين 100 والمجموع)
+        const loseChance = Math.max(0, 100 - totalProb);
+        
+        // 3. نختار رقماً عشوائياً بين 0 و 100
+        const roll = Math.random() * 100;
+
+        let winningPrize = null;
+
+        if (roll < loseChance) {
+            // ✅ حظ أوفر (فقط إذا كان مجموع النسب أقل من 100)
+            winningPrize = null;
+        } else {
+            // ✅ فوز: نختار جائزة بناءً على النسب المتبقية
+            let rand = roll - loseChance;
+            let cumulative = 0;
+            for (const p of prizes.rows) {
+                cumulative += parseFloat(p.probability);
+                if (rand < cumulative) { winningPrize = p; break; }
+            }
+            // احتياطي في حال وجود كسور عشرية
+            if (!winningPrize) winningPrize = prizes.rows[prizes.rows.length - 1];
         }
 
-        // تسجيل الفوز
-        await pool.query(`
-            INSERT INTO planet_games (user_id, status, prize_id, prize_name, prize_amount, is_rewarded)
-            VALUES ($1, 'won', $2, $3, $4, FALSE)
-        `, [user_id, winningPrize.id, winningPrize.name, winningPrize.amount]);
+        // 4. تسجيل النتيجة
+        if (winningPrize) {
+            await pool.query(`
+                INSERT INTO planet_games (user_id, status, prize_id, prize_name, prize_amount, is_rewarded)
+                VALUES ($1, 'won', $2, $3, $4, FALSE)
+            `, [user_id, winningPrize.id, winningPrize.name, winningPrize.amount]);
+        } else {
+            await pool.query(`
+                INSERT INTO planet_games (user_id, status, prize_id, prize_name, prize_amount, is_rewarded)
+                VALUES ($1, 'lost', NULL, 'حظ أوفر', 0, TRUE)
+            `, [user_id]);
+        }
 
         await pool.query(`DELETE FROM planet_active_sessions WHERE user_id = $1`, [user_id]);
 
-        res.json({ 
-            success: true, 
-            prize: {
-                id: winningPrize.id,
-                name: winningPrize.name,
-                amount: parseFloat(winningPrize.amount),
-                icon: winningPrize.icon,
-                color: winningPrize.color
-            }
-        });
+        // 5. إرسال النتيجة للواجهة
+        if (winningPrize) {
+            res.json({ 
+                success: true, 
+                matched: true,
+                prize: {
+                    id: winningPrize.id,
+                    name: winningPrize.name,
+                    amount: parseFloat(winningPrize.amount),
+                    icon: winningPrize.icon,
+                    color: winningPrize.color
+                }
+            });
+        } else {
+            res.json({ success: true, matched: false });
+        }
+        
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// الإدارة
+// الإدارة (كما هي)
 app.get('/api/planet/admin/settings', checkAdmin, async (req, res) => {
     const r = await pool.query('SELECT * FROM planet_settings');
     const s = {}; r.rows.forEach(x => s[x.setting_key] = x.setting_value);
     res.json({ success: true, settings: s });
 });
-
 app.put('/api/planet/admin/setting', checkAdmin, async (req, res) => {
     const { key, value } = req.body;
     await pool.query(`INSERT INTO planet_settings (setting_key, setting_value) VALUES ($1,$2) ON CONFLICT (setting_key) DO UPDATE SET setting_value=$2`, [key, value]);
     res.json({ success: true });
 });
-
 app.get('/api/planet/admin/prizes', checkAdmin, async (req, res) => {
     const r = await pool.query('SELECT * FROM planet_prizes ORDER BY id ASC');
     res.json({ success: true, prizes: r.rows });
 });
-
 app.post('/api/planet/admin/prizes', checkAdmin, async (req, res) => {
     const { name, amount, probability, color, texture_url } = req.body;
-    const r = await pool.query(`
-        INSERT INTO planet_prizes (name, amount, icon, color, texture_url, size, probability, is_active)
-        VALUES ($1, $2, '💎', $3, $4, 30, $5, true) RETURNING *
-    `, [name, amount, color, texture_url, probability]);
+    const r = await pool.query(`INSERT INTO planet_prizes (name, amount, icon, color, texture_url, size, probability, is_active) VALUES ($1, $2, '💎', $3, $4, 30, $5, true) RETURNING *`, [name, amount, color, texture_url, probability]);
     res.json({ success: true, prize: r.rows[0] });
 });
-
 app.put('/api/planet/admin/prizes/:id', checkAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, amount, probability, color, texture_url } = req.body;
     await pool.query(`UPDATE planet_prizes SET name=$1, amount=$2, probability=$3, color=$4, texture_url=$5 WHERE id=$6`, [name, amount, probability, color, texture_url, id]);
     res.json({ success: true });
 });
-
 app.delete('/api/planet/admin/prizes/:id', checkAdmin, async (req, res) => {
     await pool.query('DELETE FROM planet_prizes WHERE id = $1', [req.params.id]);
     res.json({ success: true });
