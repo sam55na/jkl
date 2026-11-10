@@ -10,149 +10,123 @@
     body { 
         width: 100vw; height: 100vh; background: #000; overflow: hidden; 
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff;
+        background-image: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
     }
-    
-    /* ===== الخلفية الفضائية ===== */
-    #bg-layer { 
-        position: absolute; inset: 0; background-size: cover; background-position: center; 
-        z-index: 0; opacity: 0.6; transition: background-image 1s ease; 
-    }
-    #vignette { 
-        position: absolute; inset: 0; 
-        background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.95) 100%); 
-        z-index: 1; pointer-events: none; 
-    }
-    #stars-canvas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-    
-    /* ===== واجهة المستخدم ===== */
-    #game-ui { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; pointer-events: none; }
-    
-    .top-bar { 
-        padding: 20px; text-align: center; 
-        background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); 
-    }
-    .status-text { 
-        font-size: 16px; color: #FFD700; text-shadow: 0 0 15px rgba(255,215,0,0.6); 
-        margin-bottom: 5px; font-weight: bold; letter-spacing: 1px;
-    }
-    .balance-text { font-size: 24px; font-weight: 900; color: #00FF88; text-shadow: 0 0 10px rgba(0,255,136,0.4); }
-
-    #canvas-container { flex: 1; position: relative; pointer-events: auto; transition: transform 0.1s; }
-    #canvas-container.shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-    @keyframes shake {
-        10%, 90% { transform: translate3d(-2px, 0, 0); }
-        20%, 80% { transform: translate3d(4px, 0, 0); }
-        30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
-        40%, 60% { transform: translate3d(6px, 0, 0); }
-    }
-    canvas { width: 100%; height: 100%; touch-action: none; }
-
-    .bottom-bar { 
-        padding: 30px 20px; text-align: center; 
-        background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); 
-        pointer-events: auto; 
-    }
-    .btn-play { 
-        background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 40px; 
-        padding: 18px 40px; font-size: 18px; font-weight: 900; box-shadow: 0 0 30px rgba(255, 215, 0, 0.5); 
-        cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 300px; position: relative; overflow: hidden;
-    }
-    .btn-play::after {
-        content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-        animation: shine 3s infinite;
-    }
-    @keyframes shine { 100% { left: 200%; } }
-    .btn-play:active { transform: scale(0.95); }
-    .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
-    .btn-play:disabled::after { display: none; }
 
     /* ===== شاشة التحميل ===== */
     #loader { 
         position: fixed; inset: 0; background: #000; z-index: 9999; 
         display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        transition: opacity 0.6s; 
+        transition: opacity 0.5s; 
     }
     .spinner { 
-        width: 80px; height: 80px; border: 4px solid rgba(255, 215, 0, 0.1); 
+        width: 60px; height: 60px; border: 4px solid rgba(255, 215, 0, 0.1); 
         border-top-color: #FFD700; border-radius: 50%; animation: spin 1s linear infinite; 
-        margin-bottom: 25px; box-shadow: 0 0 30px rgba(255,215,0,0.2);
+        margin-bottom: 20px;
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
-    .loader-text { color: #FFD700; letter-spacing: 3px; font-weight: bold; animation: pulse 2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-    /* ===== مودال الجائزة ===== */
-    #modal { 
-        position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); 
-        z-index: 100; display: flex; align-items: center; justify-content: center; 
-        opacity: 0; pointer-events: none; transition: 0.4s; 
+    /* ===== واجهة المستخدم ===== */
+    #game-ui { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; pointer-events: none; }
+    .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); }
+    .status-text { font-size: 16px; color: #FFD700; margin-bottom: 5px; font-weight: bold; }
+    .balance-text { font-size: 22px; font-weight: 900; color: #00FF88; }
+    .bottom-bar { padding: 30px 20px; text-align: center; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: auto; }
+    
+    .btn-play { 
+        background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 30px; 
+        padding: 16px 40px; font-size: 18px; font-weight: 900; box-shadow: 0 0 30px rgba(255, 215, 0, 0.4); 
+        cursor: pointer; transition: 0.2s; width: 100%; max-width: 300px;
     }
+    .btn-play:active { transform: scale(0.95); }
+    .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+
+    /* ===== الفضاء والكواكب (نظام المدارات) ===== */
+    #space-area {
+        flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
+        perspective: 1000px; overflow: hidden;
+    }
+    
+    /* الشمس المركزية */
+    .sun {
+        position: absolute; width: 80px; height: 80px; border-radius: 50%;
+        background: radial-gradient(circle, #fff 10%, #FFD700 40%, #FF8C00 100%);
+        box-shadow: 0 0 60px #FFD700, 0 0 100px #FF8C00;
+        z-index: 5;
+    }
+
+    /* حاوية الكوكب */
+    .orbit-container {
+        position: absolute; top: 50%; left: 50%;
+        border: 1px dashed rgba(255,255,255,0.05); /* مسار الدوران */
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none; /* النقر يمر للكوكب */
+    }
+
+    /* الكوكب نفسه */
+    .planet {
+        position: absolute; top: 0; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 60px; height: 60px;
+        border-radius: 50%;
+        cursor: pointer;
+        pointer-events: auto;
+        background-size: cover;
+        background-position: center;
+        box-shadow: inset -10px -10px 20px rgba(0,0,0,0.8), 0 0 15px rgba(255,255,255,0.2);
+        transition: transform 0.2s, filter 0.2s;
+        animation: rotateOrbit var(--duration) linear infinite;
+    }
+    .planet:hover { filter: brightness(1.3); transform: translate(-50%, -50%) scale(1.15); z-index: 20; }
+    .planet:active { transform: translate(-50%, -50%) scale(0.9); }
+    
+    /* الدوران */
+    @keyframes rotateOrbit {
+        from { transform: translate(-50%, -50%) rotate(0deg) translateX(var(--radius)) rotate(0deg); }
+        to { transform: translate(-50%, -50%) rotate(360deg) translateX(var(--radius)) rotate(-360deg); }
+    }
+
+    /* شاشة الانفجار (جسيمات) */
+    #particles-container { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+    .particle {
+        position: absolute; width: 6px; height: 6px; border-radius: 50%;
+        animation: explode 1s ease-out forwards;
+    }
+    @keyframes explode {
+        0% { transform: translate(0, 0) scale(1); opacity: 1; }
+        100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    /* ===== المودال ===== */
+    #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
     #modal.show { opacity: 1; pointer-events: auto; }
     .card { 
-        background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 30px; 
-        padding: 40px; text-align: center; transform: scale(0.7); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); 
-        box-shadow: 0 0 80px rgba(255,215,0,0.4); max-width: 85%; position: relative;
+        background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; 
+        padding: 30px 40px; text-align: center; transform: scale(0.8); transition: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        box-shadow: 0 0 60px rgba(255,215,0,0.4);
     }
     #modal.show .card { transform: scale(1); }
-    .card-icon { 
-        font-size: 90px; margin-bottom: 20px; animation: float 2s infinite; 
-        filter: drop-shadow(0 0 30px rgba(255,255,255,0.5)); 
-    }
-    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-    .card-title { color: #FFD700; font-size: 28px; font-weight: 900; margin-bottom: 10px; }
-    .card-amount { 
-        font-size: 42px; color: #00FF88; font-weight: 900; margin-bottom: 30px; 
-        text-shadow: 0 0 20px rgba(0,255,136,0.6); 
-    }
-    .btn-close { 
-        background: #FFD700; color: #000; padding: 15px 50px; border-radius: 30px; 
-        border: none; font-size: 18px; font-weight: 900; cursor: pointer; transition: 0.2s; 
-        box-shadow: 0 0 20px rgba(255,215,0,0.4);
-    }
-    .btn-close:active { transform: scale(0.95); }
+    .card-icon { font-size: 70px; margin-bottom: 10px; }
+    .card-title { color: #FFD700; font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+    .card-amount { font-size: 36px; color: #00FF88; font-weight: 900; margin-bottom: 20px; }
+    .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 20px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
 
     /* ===== لوحة الإدارة ===== */
-    #admin-panel { 
-        position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; 
-        border-radius: 20px; z-index: 1000; display: none; flex-direction: column; 
-        padding: 20px; overflow-y: auto; box-shadow: 0 0 50px rgba(0,0,0,0.9);
-    }
+    #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 2000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
     #admin-panel.show { display: flex; }
-    .admin-header { color: #FFD700; margin-bottom: 20px; text-align: center; font-weight: 900; }
-    .admin-input { 
-        background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px; 
-        border-radius: 10px; margin-bottom: 10px; width: 100%; outline: none; font-size: 14px;
-    }
-    .admin-input:focus { border-color: #FFD700; }
-    .admin-btn { 
-        background: #FFD700; color: #000; padding: 14px; border-radius: 12px; 
-        font-weight: 900; border: none; cursor: pointer; width: 100%; margin-bottom: 20px; 
-        transition: 0.2s;
-    }
-    .admin-btn:active { transform: scale(0.98); }
-    .prize-row { 
-        display: flex; gap: 8px; margin-bottom: 8px; background: #111; 
-        padding: 10px; border-radius: 10px; align-items: center; 
-    }
-    .prize-row input[type="text"], .prize-row input[type="number"] { 
-        flex: 1; background: #000; border: 1px solid #333; color: #fff; 
-        padding: 8px; border-radius: 6px; min-width: 40px; outline: none; font-size: 12px;
-    }
-    .prize-row input[type="color"] { 
-        width: 35px; height: 35px; border: none; background: none; padding: 0; cursor: pointer; border-radius: 6px;
-    }
+    .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
+    .admin-btn { background: #FFD700; color: #000; padding: 10px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-bottom: 15px; }
+    .prize-row { display: flex; gap: 8px; margin-bottom: 8px; background: #111; padding: 10px; border-radius: 8px; align-items: center; }
+    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; }
+    .prize-row input[type="color"] { width: 35px; height: 35px; border: none; background: none; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<canvas id="stars-canvas"></canvas>
-<div id="bg-layer"></div>
-<div id="vignette"></div>
-
 <div id="loader">
     <div class="spinner"></div>
-    <div class="loader-text">جاري مسح المجرة...</div>
+    <div style="color:#FFD700; font-weight:bold;">جاري مسح المجرة...</div>
 </div>
 
 <div id="game-ui">
@@ -160,9 +134,13 @@
         <div class="status-text" id="status-text">استعد للانفجار!</div>
         <div class="balance-text" id="balance-text">0 SYP</div>
     </div>
-    <div id="canvas-container">
-        <canvas id="game-canvas"></canvas>
+    
+    <div id="space-area">
+        <div class="sun"></div>
+        <div id="particles-container"></div>
+        <!-- سيتم حقن الكواكب هنا برمجياً -->
     </div>
+
     <div class="bottom-bar">
         <button class="btn-play" id="play-btn" disabled>انتظر...</button>
     </div>
@@ -172,18 +150,18 @@
     <div class="card">
         <div class="card-icon" id="m-icon">💎</div>
         <div class="card-title" id="m-title">مبروك!</div>
-        <div class="card-amount" id="m-amount">1000 SYP</div>
+        <div class="card-amount" id="m-amount">0 SYP</div>
         <button class="btn-close" id="m-close">استلام</button>
     </div>
 </div>
 
 <div id="admin-panel">
-    <h2 class="admin-header">⚙️ لوحة الإدارة</h2>
-    <label style="color:#888; font-size:12px; margin-bottom:5px;">رابط الخلفية:</label>
+    <h2 style="color:#FFD700; margin-bottom: 20px; text-align:center;">⚙️ لوحة الإدارة</h2>
+    <label style="color:#888; font-size:12px;">رابط الخلفية:</label>
     <input type="text" id="a-bg" class="admin-input">
     <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
     
-    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز (الاسم | المبلغ | الاحتمال | اللون)</h3>
+    <h3 style="color:#FFD700; margin:20px 0 10px; font-size:16px;">🪐 الجوائز</h3>
     <div id="admin-prizes"></div>
     
     <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
@@ -193,300 +171,169 @@
 // ================================================================
 //   الإعدادات الأساسية
 // ================================================================
-const API_BASE = 'https://jkl-ttvi.onrender.com'; // ✅ تم ربط رابط الخادم هنا
-const ADMIN_ID = "7011476249"; // ضع معرفك هنا
+const API_BASE = 'https://jkl-ttvi.onrender.com'; 
+const ADMIN_ID = "7011476249"; 
 const urlParams = new URLSearchParams(window.location.search);
 const isAdmin = urlParams.get('admin_id') === ADMIN_ID;
 const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 123456789;
 
-let canvas, ctx, dpr = window.devicePixelRatio || 1;
-let planets = [];
-let particles = [];
-let isPlaying = false;
+let planetsData = [];
 let winningPrizeId = null;
+let isPlaying = false;
 let animId;
-let startTime = 0;
-let currentBalance = 0;
+
+// صور كواكب حقيقية عالية الدقة (لن تبدو مقرفة)
+const PLANET_IMAGES = [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/300px-The_Earth_seen_from_Apollo_17.jpg", // الأرض
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/300px-OSIRIS_Mars_true_color.jpg", // المريخ
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jupiter.jpg/300px-Jupiter.jpg", // المشتري
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/300px-Saturn_during_Equinox.jpg" // زحل
+];
 
 // ================================================================
-//   🌌 رسم النجوم الخلفية (Parallax)
+//   🔊 محرك الصوت
 // ================================================================
-const starsCanvas = document.getElementById('stars-canvas');
-const starsCtx = starsCanvas.getContext('2d');
-let stars = [];
-function initStars() {
-    starsCanvas.width = window.innerWidth;
-    starsCanvas.height = window.innerHeight;
-    stars = [];
-    for (let i = 0; i < 150; i++) {
-        stars.push({
-            x: Math.random() * starsCanvas.width,
-            y: Math.random() * starsCanvas.height,
-            radius: Math.random() * 1.5,
-            alpha: Math.random(),
-            speed: Math.random() * 0.02 + 0.005
-        });
-    }
-}
-function drawStars() {
-    starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
-    stars.forEach(s => {
-        s.alpha += s.speed;
-        if (s.alpha > 1 || s.alpha < 0.1) s.speed *= -1;
-        starsCtx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
-        starsCtx.beginPath();
-        starsCtx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-        starsCtx.fill();
-    });
-    requestAnimationFrame(drawStars);
-}
-
-// ================================================================
-//   🔊 محرك الصوت (Web Audio API)
-// ================================================================
-class AudioEngine {
-    constructor() { this.ctx = null; }
-    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playExplosionSound() {
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
     
-    playExplosion() {
-        if (!this.ctx) return;
-        const bufferSize = this.ctx.sampleRate * 2;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
-        
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 2);
-        
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(1, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 2);
-        
-        noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
-        noise.start();
-    }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 2);
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 2);
     
-    playSuccess() {
-        if (!this.ctx) return;
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-        notes.forEach((freq, i) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.connect(gain); gain.connect(this.ctx.destination);
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime + i * 0.1);
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.2, this.ctx.currentTime + i * 0.1);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.3);
-            osc.start(this.ctx.currentTime + i * 0.1);
-            osc.stop(this.ctx.currentTime + i * 0.1 + 0.3);
-        });
-    }
-    
-    playWrong() {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.3);
-        osc.type = 'sawtooth';
-        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-        osc.start(); osc.stop(this.ctx.currentTime + 0.3);
-    }
+    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+    noise.start();
 }
-const audio = new AudioEngine();
-
-// ================================================================
-//   ✨ نظام الجسيمات (الانفجار)
-// ================================================================
-class Particle {
-    constructor(x, y, color) {
-        this.x = x; this.y = y;
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 25 + 5;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.size = Math.random() * 6 + 2;
-        this.color = color;
-        this.life = 1;
-        this.decay = Math.random() * 0.02 + 0.01;
-        this.gravity = 0.1;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy;
-        this.vx *= 0.96; this.vy = this.vy * 0.96 + this.gravity;
-        this.life -= this.decay;
-    }
-    draw() {
-        ctx.globalAlpha = Math.max(0, this.life);
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 20; ctx.shadowColor = this.color;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
-    }
-}
-
-// ================================================================
-//   🪐 إعداد الـ Canvas والكواكب
-// ================================================================
-function initCanvas() {
-    canvas = document.getElementById('game-canvas');
-    ctx = canvas.getContext('2d');
-    
-    function resize() {
-        const parent = canvas.parentElement;
-        canvas.width = parent.clientWidth * dpr;
-        canvas.height = parent.clientHeight * dpr;
-        ctx.scale(dpr, dpr);
-    }
-    window.addEventListener('resize', resize);
-    resize();
-}
-
-function createPlanetsFromPrizes(prizes) {
-    const cx = canvas.parentElement.clientWidth / 2;
-    const cy = canvas.parentElement.clientHeight / 2;
-    const maxR = Math.min(cx, cy) * 0.75;
-
-    planets = prizes.map((p, i) => {
-        return {
-            id: p.id,
-            color: p.color,
-            color2: p.color2,
-            size: p.size || 30,
-            orbitRadius: (maxR / prizes.length) * (i + 1),
-            angle: Math.random() * Math.PI * 2,
-            speed: (0.5 + Math.random()) * 0.001,
-            exploded: false,
-            x: 0, y: 0
-        };
+function playSuccessSound() {
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.1 + 0.3);
+        osc.start(audioCtx.currentTime + i * 0.1);
+        osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
     });
 }
 
 // ================================================================
-//   🎬 حلقة الرسم
+//   🪐 بناء الكواكب في المدارات
 // ================================================================
-function render(time) {
-    if (!startTime) startTime = time;
-    const elapsed = time - startTime;
+function buildPlanets(prizes) {
+    const spaceArea = document.getElementById('space-area');
+    // مسح الكواكب القديمة
+    spaceArea.querySelectorAll('.orbit-container').forEach(el => el.remove());
+    planetsData = [];
 
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
-    ctx.clearRect(0, 0, w, h);
-    const cx = w / 2, cy = h / 2;
+    const maxRadius = Math.min(spaceArea.clientWidth, spaceArea.clientHeight) / 2 - 40;
+    const baseRadius = maxRadius / (prizes.length + 1);
 
-    // رسم المدارات
-    planets.forEach(p => {
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, p.orbitRadius, p.orbitRadius * 0.7, 0, 0, Math.PI * 2);
-        ctx.stroke();
-    });
+    prizes.forEach((p, i) => {
+        // 1. إنشاء حاوية المدار
+        const orbit = document.createElement('div');
+        orbit.className = 'orbit-container';
+        const radius = baseRadius * (i + 1);
+        orbit.style.width = (radius * 2) + 'px';
+        orbit.style.height = (radius * 2) + 'px';
 
-    // رسم الكواكب
-    planets.forEach(p => {
-        if (p.exploded) return;
-        const angle = p.angle + elapsed * p.speed;
-        p.x = cx + Math.cos(angle) * p.orbitRadius;
-        p.y = cy + Math.sin(angle) * p.orbitRadius * 0.7;
-
-        // تدرج كروي
-        const grad = ctx.createRadialGradient(
-            p.x - p.size*0.4, p.y - p.size*0.4, 0, 
-            p.x, p.y, p.size
-        );
-        grad.addColorStop(0, p.color2 || '#fff');
-        grad.addColorStop(1, p.color);
-
-        // هالة خارجية
-        ctx.shadowBlur = 30; ctx.shadowColor = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = grad; ctx.fill();
-        ctx.shadowBlur = 0;
+        // 2. إنشاء الكوكب
+        const planet = document.createElement('div');
+        planet.className = 'planet';
+        // استخدام صور كواكب حقيقية
+        planet.style.backgroundImage = `url('${PLANET_IMAGES[i % PLANET_IMAGES.length]}')`;
         
-        // لمعة داخلية
-        ctx.beginPath();
-        ctx.arc(p.x - p.size*0.3, p.y - p.size*0.3, p.size*0.2, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.fill();
+        // إعدادات الدوران
+        planet.style.setProperty('--radius', radius + 'px');
+        const duration = 20 + Math.random() * 20; // 20-40 ثانية للدورة
+        planet.style.setProperty('--duration', duration + 's');
+        planet.style.animationDirection = i % 2 === 0 ? 'normal' : 'reverse';
+
+        // حدث النقر
+        planet.onclick = () => handlePlanetClick(p, planet);
+
+        orbit.appendChild(planet);
+        spaceArea.appendChild(orbit);
+        
+        planetsData.push({ ...p, element: planet });
     });
-
-    // رسم الجسيمات
-    particles = particles.filter(pt => pt.life > 0);
-    particles.forEach(pt => { pt.update(); pt.draw(); });
-    ctx.globalAlpha = 1;
-
-    animId = requestAnimationFrame(render);
 }
 
 // ================================================================
-//   🖱️ النقر والانفجار
+//   💥 الانفجار
 // ================================================================
-function handlePointerDown(e) {
+function handlePlanetClick(planetData, planetElement) {
     if (!isPlaying) return;
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
 
-    for (let p of planets) {
-        if (p.exploded) continue;
-        const dx = clickX - p.x;
-        const dy = clickY - p.y;
+    // إيقاف مؤقت لحركة الكوكب لالتقاط موقعه
+    planetElement.style.animationPlayState = 'paused';
+    const rect = planetElement.getBoundingClientRect();
+    const spaceRect = document.getElementById('space-area').getBoundingClientRect();
+    
+    const centerX = rect.left - spaceRect.left + rect.width / 2;
+    const centerY = rect.top - spaceRect.top + rect.height / 2;
+
+    if (planetData.id === winningPrizeId) {
+        // ✅ الكوكب الصحيح
+        isPlaying = false;
+        planetElement.style.display = 'none'; // إخفاء الكوكب
+        playExplosionSound();
+        createExplosion(centerX, centerY);
         
-        if (Math.sqrt(dx*dx + dy*dy) < p.size + 25) {
-            if (p.id === winningPrizeId) {
-                triggerExplosion(p);
-            } else {
-                // كوكب خاطئ
-                audio.playWrong();
-                if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+        if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+        
+        setTimeout(() => playSuccessSound(), 800);
+
+        fetch(`${API_BASE}/api/planet/finish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: USER_ID, prize_id: planetData.id })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                setTimeout(() => showModal(data.prize), 1000);
             }
-            break;
-        }
+        });
+    } else {
+        // ❌ كوكب خاطئ (يرتجف فقط)
+        planetElement.style.animationPlayState = 'running';
+        if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
     }
 }
 
-function triggerExplosion(planet) {
-    isPlaying = false;
-    planet.exploded = true;
+function createExplosion(x, y) {
+    const container = document.getElementById('particles-container');
+    const colors = ['#FFD700', '#FF8C00', '#FF4444', '#FFFFFF'];
     
-    // اهتزاز
-    if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
-    document.getElementById('canvas-container').classList.add('shake');
-    setTimeout(() => document.getElementById('canvas-container').classList.remove('shake'), 500);
-    
-    // صوت
-    audio.playExplosion();
-    setTimeout(() => audio.playSuccess(), 800);
-
-    // جسيمات
-    for (let i = 0; i < 200; i++) {
-        particles.push(new Particle(planet.x, planet.y, Math.random() > 0.5 ? planet.color : '#FFD700'));
+    for (let i = 0; i < 100; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = x + 'px';
+        p.style.top = y + 'px';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * 200 + 50;
+        p.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+        p.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+        
+        container.appendChild(p);
+        setTimeout(() => p.remove(), 1000);
     }
-
-    // تسجيل في الخادم
-    fetch(`${API_BASE}/api/planet/finish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID, prize_id: planet.id })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            setTimeout(() => showModal(data.prize), 1200);
-        }
-    })
-    .catch(e => console.error(e));
 }
 
 // ================================================================
-//   🏆 عرض الجائزة
+//   🏆 المودال والحالة
 // ================================================================
 function showModal(prize) {
     document.getElementById('m-icon').textContent = prize.icon || '💎';
@@ -494,14 +341,9 @@ function showModal(prize) {
     document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
     document.getElementById('modal').classList.add('show');
     
-    currentBalance += prize.amount;
-    document.getElementById('balance-text').textContent = `${currentBalance} SYP`;
-    
-    setTimeout(() => {
-        document.getElementById('play-btn').disabled = true;
-        document.getElementById('play-btn').textContent = "لقد انهيت الجولة!";
-        document.getElementById('status-text').textContent = "عد غداً!";
-    }, 2000);
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('play-btn').textContent = "لقد انهيت الجولة!";
+    document.getElementById('status-text').textContent = "عد غداً!";
 }
 
 document.getElementById('m-close').onclick = () => {
@@ -512,46 +354,36 @@ document.getElementById('m-close').onclick = () => {
 //   🚀 التهيئة
 // ================================================================
 async function boot() {
-    initStars();
-    drawStars();
-    initCanvas();
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    audio.init();
+    // تفعيل الصوت
+    document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
 
     try {
-        // جلب بيانات اللعبة
         const res = await fetch(`${API_BASE}/api/planet/data`);
         const data = await res.json();
         
         if (data.success) {
-            document.getElementById('bg-layer').style.backgroundImage = `url(${data.background})`;
-            createPlanetsFromPrizes(data.prizes);
-            requestAnimationFrame(render);
+            if (data.background) document.body.style.backgroundImage = `url('${data.background}')`;
+            buildPlanets(data.prizes);
 
-            // جلب حالة المستخدم
             const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
             const statusData = await statusRes.json();
             
             if (statusData.can_play) {
                 document.getElementById('play-btn').disabled = false;
                 document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
-                document.getElementById('status-text').textContent = "جاهز للانفجار";
             } else {
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
-                document.getElementById('status-text').textContent = "غير متاح";
             }
         }
     } catch (e) {
-        console.error('Boot error:', e);
-        document.getElementById('status-text').textContent = "خطأ في الاتصال بالخادم";
+        console.error(e);
     }
 
-    // إخفاء شاشة التحميل
     document.getElementById('loader').style.opacity = '0';
-    setTimeout(() => document.getElementById('loader').style.display = 'none', 600);
+    setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
 
-    // لوحة الإدارة
+    // التحقق من الأدمن
     if (isAdmin) {
         document.getElementById('admin-panel').classList.add('show');
         loadAdminData();
@@ -560,7 +392,6 @@ async function boot() {
 
 document.getElementById('play-btn').onclick = async () => {
     if (isPlaying) return;
-    audio.init(); // تفعيل الصوت بعد تفاعل المستخدم
     document.getElementById('play-btn').disabled = true;
     document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
 
@@ -583,14 +414,13 @@ document.getElementById('play-btn').onclick = async () => {
             document.getElementById('play-btn').textContent = "حاول مجدداً";
         }
     } catch (e) {
-        alert("خطأ في الاتصال بالخادم");
+        alert("خطأ في الاتصال");
         document.getElementById('play-btn').disabled = false;
-        document.getElementById('play-btn').textContent = "حاول مجدداً";
     }
 };
 
 // ================================================================
-//   ⚙️ لوحة الإدارة
+//   ⚙️ الإدارة
 // ================================================================
 async function loadAdminData() {
     try {
@@ -612,15 +442,13 @@ async function loadAdminData() {
                         <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;">
                         <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;">
                         <input type="color" value="${p.color}" id="p-color-${p.id}">
-                        <button class="admin-btn" style="width:auto; padding:8px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
+                        <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0; font-size:12px;" onclick="savePrize(${p.id})">حفظ</button>
                     </div>
                 `;
             });
             document.getElementById('admin-prizes').innerHTML = html;
         }
-    } catch (e) {
-        console.error('Admin load error:', e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 async function saveBg() {
@@ -630,8 +458,8 @@ async function saveBg() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val })
     });
-    document.getElementById('bg-layer').style.backgroundImage = `url(${val})`;
-    alert('✅ تم حفظ الخلفية');
+    document.body.style.backgroundImage = `url('${val}')`;
+    alert('تم الحفظ');
 }
 
 async function savePrize(id) {
@@ -640,16 +468,12 @@ async function savePrize(id) {
     const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
     const color = document.getElementById(`p-color-${id}`).value;
     
-    const res = await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
+    await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            admin_id: ADMIN_ID, name, amount, probability: prob, color,
-            icon: '💎', color2: color, size: 35, is_active: true 
-        })
+        body: JSON.stringify({ admin_id: ADMIN_ID, name, amount, probability: prob, color, icon: '💎', color2: color, size: 35, is_active: true })
     });
-    const data = await res.json();
-    if (data.success) alert('✅ تم الحفظ!');
+    alert('تم الحفظ');
 }
 
 window.onload = boot;
