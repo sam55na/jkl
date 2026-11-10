@@ -94,10 +94,10 @@ const TABLE_SCHEMAS = {
 };
 
 const DEFAULT_PRIZES = [
-    { name: 'الماسة الفضائية', amount: 1000, icon: '💎', color: '#9b59b6', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/300px-The_Earth_seen_from_Apollo_17.jpg', size: 40, probability: 10 },
-    { name: 'النجم الساطع', amount: 500, icon: '🌟', color: '#f1c40f', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/300px-OSIRIS_Mars_true_color.jpg', size: 35, probability: 20 },
-    { name: 'كوكب زحل', amount: 200, icon: '🪐', color: '#e67e22', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jupiter.jpg/300px-Jupiter.jpg', size: 30, probability: 30 },
-    { name: 'كوكب الأرض', amount: 100, icon: '🌍', color: '#2980b9', texture_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/300px-Saturn_during_Equinox.jpg', size: 25, probability: 40 }
+    { name: 'الماسة الفضائية', amount: 1000, icon: '💎', color: '#9b59b6', texture_url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg', size: 40, probability: 10 },
+    { name: 'النجم الساطع', amount: 500, icon: '🌟', color: '#f1c40f', texture_url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg', size: 35, probability: 20 },
+    { name: 'كوكب زحل', amount: 200, icon: '🪐', color: '#e67e22', texture_url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter_2k.jpg', size: 30, probability: 30 },
+    { name: 'كوكب الأرض', amount: 100, icon: '🌍', color: '#2980b9', texture_url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn_2k.jpg', size: 25, probability: 40 }
 ];
 
 const DEFAULT_SETTINGS = [
@@ -229,7 +229,7 @@ app.get('/api/planet/status/:user_id', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// بدء اللعبة (اختيار الجائزة الرابحة بدقة)
+// بدء اللعبة (✅ الحل الجذري لمشكلة 100%)
 app.post('/api/planet/start', async (req, res) => {
     const { user_id } = req.body;
     if (!dbReady) return res.status(503).json({ success: false, error: 'Database not ready' });
@@ -254,30 +254,42 @@ app.post('/api/planet/start', async (req, res) => {
             if (hoursDiff < interval) return res.status(429).json({ success: false, error: 'فترة التبريد لم تنته بعد' });
         }
 
-        // جلب الجوائز
         const prizes = await pool.query('SELECT * FROM planet_prizes WHERE is_active = true');
         if (prizes.rows.length === 0) return res.status(500).json({ success: false, error: 'لا توجد جوائز' });
 
-        // ✅ الحساب الدقيق للنسب (حل مشكلة حظ أوفر مع 100%)
-        const totalProb = prizes.rows.reduce((s, p) => s + parseFloat(p.probability), 0);
+        // ✅ الخوارزمية المضمونة 100%
+        let totalProb = prizes.rows.reduce((s, p) => s + parseFloat(p.probability), 0);
         
-        // إذا كان مجموع النسب أقل من 100، فإن الباقي يعتبر فرصة "حظ أوفر" (خسارة)
-        const loseChance = Math.max(0, 100 - totalProb);
-        const roll = Math.random() * 100; 
+        // إذا كان المجموع أكبر من أو يساوي 100، نعتبره 100 (لا خسارة أبداً)
+        // إذا كان أقل من 100، فإن الباقي يعتبر فرصة خسارة
+        const loseChance = totalProb >= 100 ? 0 : (100 - totalProb);
+        
+        // تصحيح المجموع ليكون بالضبط 100 في حالة الفوز لضمان عدم وجود كسور
+        if (loseChance === 0 && totalProb > 100) {
+            // تطبيع النسب لتكون مجموعها 100
+            const ratio = 100 / totalProb;
+            prizes.rows = prizes.rows.map(p => {
+                p.probability = parseFloat(p.probability) * ratio;
+                return p;
+            });
+            totalProb = 100;
+        }
+
+        const roll = Math.random() * 100; // دائماً بين 0 و 100
 
         let winningPrize = null;
 
         if (roll < loseChance) {
-            winningPrize = null; // خسارة
+            winningPrize = null; // خسارة (حظ أوفر)
         } else {
-            // فوز: عشوائي موزون دقيق
+            // فوز: نطرح نسبة الخسارة من الرقم المرمي
             let rand = roll - loseChance;
             let cumulative = 0;
             for (const p of prizes.rows) {
                 cumulative += parseFloat(p.probability);
-                if (rand <= cumulative) { winningPrize = p; break; }
+                if (rand < cumulative) { winningPrize = p; break; }
             }
-            // احتياطي في حال الكسور العشرية
+            // احتياطي (لن يحدث أبداً مع التطبيع، لكن لضمان الأمان)
             if (!winningPrize) winningPrize = prizes.rows[prizes.rows.length - 1];
         }
 
@@ -289,7 +301,7 @@ app.post('/api/planet/start', async (req, res) => {
             res.json({ success: true, winning_prize_id: winningPrize.id });
         } else {
             await pool.query(`INSERT INTO planet_active_sessions (user_id, winning_prize_id) VALUES ($1, $2)`, [user_id, 0]);
-            res.json({ success: true, winning_prize_id: 0 }); // 0 يعني خسارة
+            res.json({ success: true, winning_prize_id: 0 }); // 0 = خسارة
         }
 
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
