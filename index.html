@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cosmic Blast - تفجير الكواكب</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    body { width: 100vw; height: 100vh; background: #000; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    
+    /* الخلفية والظلال */
+    #bg-layer { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; opacity: 0.7; transition: background-image 1s ease; }
+    #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.9) 100%); z-index: 1; pointer-events: none; }
+    
+    /* واجهة المستخدم */
+    #game-ui { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; pointer-events: none; }
+    
+    .top-bar { padding: 20px; text-align: center; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); }
+    .status-text { font-size: 16px; color: #FFD700; text-shadow: 0 0 10px #FFD700; margin-bottom: 5px; font-weight: bold; }
+    .balance-text { font-size: 22px; font-weight: bold; color: #00FF88; }
+
+    #canvas-container { flex: 1; position: relative; pointer-events: auto; }
+    canvas { width: 100%; height: 100%; touch-action: none; }
+
+    .bottom-bar { padding: 30px 20px; text-align: center; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); pointer-events: auto; }
+    .btn-play { 
+        background: linear-gradient(135deg, #FFD700, #FF8C00); color: #000; border: none; border-radius: 40px; 
+        padding: 16px 40px; font-size: 18px; font-weight: bold; box-shadow: 0 0 30px rgba(255, 215, 0, 0.4); 
+        cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 300px;
+    }
+    .btn-play:active { transform: scale(0.95); }
+    .btn-play:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+
+    /* شاشة التحميل */
+    #loader { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+    .spinner { width: 70px; height: 70px; border: 4px solid rgba(255, 215, 0, 0.1); border-top-color: #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* مودال الجائزة */
+    #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.4s; }
+    #modal.show { opacity: 1; pointer-events: auto; }
+    .card { 
+        background: linear-gradient(135deg, #1a1a2e, #0f3460); border: 2px solid #FFD700; border-radius: 24px; 
+        padding: 40px; text-align: center; transform: scale(0.8); transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); 
+        box-shadow: 0 0 60px rgba(255,215,0,0.3); max-width: 85%;
+    }
+    #modal.show .card { transform: scale(1); }
+    .card-icon { font-size: 80px; margin-bottom: 15px; animation: float 2s infinite; filter: drop-shadow(0 0 20px currentColor); }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .card-title { color: #FFD700; font-size: 26px; font-weight: bold; margin-bottom: 10px; }
+    .card-amount { font-size: 38px; color: #00FF88; font-weight: bold; margin-bottom: 25px; text-shadow: 0 0 15px rgba(0,255,136,0.5); }
+    .btn-close { background: #FFD700; color: #000; padding: 12px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-close:active { transform: scale(0.95); }
+
+    /* لوحة الإدارة */
+    #admin-panel { position: fixed; inset: 10px; background: #0a0a0a; border: 1px solid #333; border-radius: 20px; z-index: 1000; display: none; flex-direction: column; padding: 20px; overflow-y: auto; }
+    #admin-panel.show { display: flex; }
+    .admin-header { color: #FFD700; margin-bottom: 20px; text-align: center; }
+    .admin-input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; width: 100%; outline: none; }
+    .admin-btn { background: #FFD700; color: #000; padding: 12px; border-radius: 10px; font-weight: bold; border: none; cursor: pointer; width: 100%; margin-bottom: 20px; }
+    .prize-row { display: flex; gap: 10px; margin-bottom: 10px; background: #111; padding: 10px; border-radius: 8px; align-items: center; }
+    .prize-row input[type="text"], .prize-row input[type="number"] { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; min-width: 50px; }
+    .prize-row input[type="color"] { width: 40px; height: 40px; border: none; background: none; padding: 0; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="bg-layer"></div>
+<div id="vignette"></div>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div style="color:#FFD700; letter-spacing:2px; font-weight:bold;">جاري مسح المجرة...</div>
+</div>
+
+<div id="game-ui">
+    <div class="top-bar">
+        <div class="status-text" id="status-text">استعد للانفجار!</div>
+        <div class="balance-text" id="balance-text">0 SYP</div>
+    </div>
+    <div id="canvas-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    <div class="bottom-bar">
+        <button class="btn-play" id="play-btn" disabled>انتظر...</button>
+    </div>
+</div>
+
+<div id="modal">
+    <div class="card">
+        <div class="card-icon" id="m-icon">💎</div>
+        <div class="card-title" id="m-title">مبروك!</div>
+        <div class="card-amount" id="m-amount">1000 SYP</div>
+        <button class="btn-close" id="m-close">استلام</button>
+    </div>
+</div>
+
+<div id="admin-panel">
+    <h2 class="admin-header">⚙️ لوحة الإدارة</h2>
+    <label style="color:#888; font-size:12px; margin-bottom:5px;">رابط الخلفية:</label>
+    <input type="text" id="a-bg" class="admin-input">
+    <button class="admin-btn" onclick="saveBg()">حفظ الخلفية</button>
+    
+    <h3 style="color:#FFD700; margin:20px 0 10px;">🪐 الجوائز (الاحتمالات)</h3>
+    <div id="admin-prizes"></div>
+    
+    <button class="admin-btn" style="background: #ff4444; color: white; margin-top:20px;" onclick="document.getElementById('admin-panel').classList.remove('show')">إغلاق</button>
+</div>
+
+<script>
+// ================================================================
+//   الإعدادات الأساسية
+// ================================================================
+const API_BASE = 'http://localhost:5001'; // غير هذا إلى رابط الخادم
+const ADMIN_ID = "7011476249"; // ضع معرفك
+const urlParams = new URLSearchParams(window.location.search);
+const isAdmin = urlParams.get('admin_id') === ADMIN_ID;
+const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 123456789;
+
+let canvas, ctx, dpr = window.devicePixelRatio || 1;
+let planets = [];
+let particles = [];
+let isPlaying = false;
+let winningPrizeId = null;
+let animId;
+let startTime = 0;
+let currentBalance = 0;
+
+// ================================================================
+//   محرك الصوت
+// ================================================================
+class AudioEngine {
+    constructor() { this.ctx = null; }
+    init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    playExplosion() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 2);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 2);
+        noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+        noise.start();
+    }
+}
+const audio = new AudioEngine();
+
+// ================================================================
+//   نظام الجسيمات (الانفجار)
+// ================================================================
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 20 + 5;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.size = Math.random() * 5 + 2;
+        this.color = color;
+        this.life = 1;
+        this.decay = Math.random() * 0.02 + 0.01;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.vx *= 0.95; this.vy *= 0.95;
+        this.life -= this.decay;
+    }
+    draw() {
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+    }
+}
+
+// ================================================================
+//   إعداد الـ Canvas
+// ================================================================
+function initCanvas() {
+    canvas = document.getElementById('game-canvas');
+    ctx = canvas.getContext('2d');
+    function resize() {
+        const parent = canvas.parentElement;
+        canvas.width = parent.clientWidth * dpr;
+        canvas.height = parent.clientHeight * dpr;
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+}
+
+function createPlanetsFromPrizes(prizes) {
+    const cx = canvas.parentElement.clientWidth / 2;
+    const cy = canvas.parentElement.clientHeight / 2;
+    const maxR = Math.min(cx, cy) * 0.7;
+
+    planets = prizes.map((p, i) => {
+        return {
+            id: p.id,
+            color: p.color,
+            color2: p.color2,
+            size: p.size || 30,
+            orbitRadius: (maxR / prizes.length) * (i + 1),
+            angle: Math.random() * Math.PI * 2,
+            speed: (0.5 + Math.random()) * 0.001,
+            exploded: false,
+            x: 0, y: 0
+        };
+    });
+}
+
+// ================================================================
+//   حلقة الرسم (الرسوميات)
+// ================================================================
+function render(time) {
+    if (!startTime) startTime = time;
+    const elapsed = time - startTime;
+
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2;
+
+    // رسم الكواكب
+    planets.forEach(p => {
+        if (p.exploded) return;
+        const angle = p.angle + elapsed * p.speed;
+        p.x = cx + Math.cos(angle) * p.orbitRadius;
+        p.y = cy + Math.sin(angle) * p.orbitRadius * 0.7; // منظور بيضاوي
+
+        const grad = ctx.createRadialGradient(p.x - p.size*0.3, p.y - p.size*0.3, 0, p.x, p.y, p.size);
+        grad.addColorStop(0, p.color2 || '#fff');
+        grad.addColorStop(1, p.color);
+
+        ctx.shadowBlur = 25; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = grad; ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    // رسم الجسيمات
+    particles = particles.filter(pt => pt.life > 0);
+    particles.forEach(pt => { pt.update(); pt.draw(); });
+    ctx.globalAlpha = 1;
+
+    animId = requestAnimationFrame(render);
+}
+
+// ================================================================
+//   النقر والانفجار
+// ================================================================
+function handlePointerDown(e) {
+    if (!isPlaying) return;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    for (let p of planets) {
+        if (p.exploded) continue;
+        const dx = clickX - p.x;
+        const dy = clickY - p.y;
+        if (Math.sqrt(dx*dx + dy*dy) < p.size + 20) {
+            if (p.id === winningPrizeId) {
+                triggerExplosion(p);
+            } else {
+                if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+            }
+            break;
+        }
+    }
+}
+
+function triggerExplosion(planet) {
+    isPlaying = false;
+    planet.exploded = true;
+    
+    if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+    audio.playExplosion();
+
+    for (let i = 0; i < 150; i++) {
+        particles.push(new Particle(planet.x, planet.y, Math.random() > 0.5 ? planet.color : '#FFD700'));
+    }
+
+    fetch(`${API_BASE}/api/planet/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID, prize_id: planet.id })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            setTimeout(() => showModal(data.prize), 800);
+        }
+    });
+}
+
+// ================================================================
+//   واجهة المستخدم
+// ================================================================
+function showModal(prize) {
+    document.getElementById('m-icon').textContent = prize.icon || '💎';
+    document.getElementById('m-title').textContent = prize.name;
+    document.getElementById('m-amount').textContent = `${prize.amount} SYP`;
+    document.getElementById('modal').classList.add('show');
+    currentBalance += prize.amount;
+    document.getElementById('balance-text').textContent = `${currentBalance} SYP`;
+    
+    setTimeout(() => {
+        document.getElementById('play-btn').disabled = true;
+        document.getElementById('play-btn').textContent = "لقد انهيت الجولة!";
+        document.getElementById('status-text').textContent = "عد غداً!";
+    }, 2000);
+}
+
+document.getElementById('m-close').onclick = () => {
+    document.getElementById('modal').classList.remove('show');
+};
+
+// ================================================================
+//   التهيئة
+// ================================================================
+async function boot() {
+    initCanvas();
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    audio.init();
+
+    try {
+        const res = await fetch(`${API_BASE}/api/planet/data`);
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('bg-layer').style.backgroundImage = `url(${data.background})`;
+            createPlanetsFromPrizes(data.prizes);
+            requestAnimationFrame(render);
+
+            const statusRes = await fetch(`${API_BASE}/api/planet/status/${USER_ID}`);
+            const statusData = await statusRes.json();
+            
+            if (statusData.can_play) {
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').textContent = "🚀 اختر كوكباً لتفجيره!";
+                document.getElementById('status-text').textContent = "جاهز للانفجار";
+            } else {
+                document.getElementById('play-btn').disabled = true;
+                document.getElementById('play-btn').textContent = statusData.deposit_met ? `انتظر ${statusData.remaining_hours} ساعة` : "يجب الإيداع أولاً";
+                document.getElementById('status-text').textContent = "غير متاح";
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+
+    document.getElementById('loader').style.opacity = '0';
+    setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+
+    if (isAdmin) {
+        document.getElementById('admin-panel').classList.add('show');
+        loadAdminData();
+    }
+}
+
+document.getElementById('play-btn').onclick = async () => {
+    if (isPlaying) return;
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('play-btn').textContent = "جاري بدء اللعبة...";
+
+    const res = await fetch(`${API_BASE}/api/planet/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        winningPrizeId = data.winning_prize_id;
+        isPlaying = true;
+        document.getElementById('play-btn').textContent = "اضغط على الكوكب الصحيح!";
+    } else {
+        alert(data.error);
+        document.getElementById('play-btn').disabled = false;
+        document.getElementById('play-btn').textContent = "حاول مجدداً";
+    }
+};
+
+// ================================================================
+//   دوال الإدارة
+// ================================================================
+async function loadAdminData() {
+    const settingsRes = await fetch(`${API_BASE}/api/planet/admin/settings?admin_id=${ADMIN_ID}`);
+    const settingsData = await settingsRes.json();
+    if (settingsData.success) {
+        document.getElementById('a-bg').value = settingsData.settings.bg_image_url || '';
+    }
+
+    const prizesRes = await fetch(`${API_BASE}/api/planet/admin/prizes?admin_id=${ADMIN_ID}`);
+    const prizesData = await prizesRes.json();
+    
+    if (prizesData.success) {
+        let html = '';
+        prizesData.prizes.forEach(p => {
+            html += `
+                <div class="prize-row">
+                    <input type="text" value="${p.name}" id="p-name-${p.id}" style="flex:2;">
+                    <input type="number" value="${p.amount}" id="p-amount-${p.id}" style="flex:1;">
+                    <input type="number" value="${p.probability}" id="p-prob-${p.id}" style="flex:1;">
+                    <input type="color" value="${p.color}" id="p-color-${p.id}">
+                    <button class="admin-btn" style="width:auto; padding:5px 15px; margin:0;" onclick="savePrize(${p.id})">حفظ</button>
+                </div>
+            `;
+        });
+        document.getElementById('admin-prizes').innerHTML = html;
+    }
+}
+
+async function saveBg() {
+    const val = document.getElementById('a-bg').value;
+    await fetch(`${API_BASE}/api/planet/admin/setting`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: ADMIN_ID, key: 'bg_image_url', value: val })
+    });
+    document.getElementById('bg-layer').style.backgroundImage = `url(${val})`;
+    alert('تم حفظ الخلفية');
+}
+
+async function savePrize(id) {
+    const name = document.getElementById(`p-name-${id}`).value;
+    const amount = parseFloat(document.getElementById(`p-amount-${id}`).value);
+    const prob = parseFloat(document.getElementById(`p-prob-${id}`).value);
+    const color = document.getElementById(`p-color-${id}`).value;
+    
+    const res = await fetch(`${API_BASE}/api/planet/admin/prizes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            admin_id: ADMIN_ID, name, amount, probability: prob, color,
+            icon: '💎', color2: color, size: 35, is_active: true 
+        })
+    });
+    const data = await res.json();
+    if (data.success) alert('تم الحفظ!');
+}
+
+window.onload = boot;
+</script>
+</body>
+</html>
